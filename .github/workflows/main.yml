@@ -1,5 +1,4 @@
 name: IPPL documentation
-run-name: ${{ github.actor }} is hosting the IPPL Documentation
 on:
   push:
     - master
