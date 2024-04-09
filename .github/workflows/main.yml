@@ -1,7 +1,8 @@
 name: IPPL documentation
 on:
   push:
-    - master
+    branches:
+      - master
 
 
 jobs:
