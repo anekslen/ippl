@@ -1,4 +1,0 @@
-var searchData=
-[
-  ['transform_927',['transform',['../classippl_1_1FFT_3_01CCTransform_00_01ComplexField_01_4.html#a30e59939df7d10074fe62ac5cab1548c',1,'ippl::FFT&lt; CCTransform, ComplexField &gt;::transform()'],['../classippl_1_1FFT_3_01RCTransform_00_01RealField_01_4.html#a5f5d176ecd6670e833250fd3407188d6',1,'ippl::FFT&lt; RCTransform, RealField &gt;::transform()'],['../classippl_1_1FFT_3_01SineTransform_00_01Field_01_4.html#aaa83df76e7e7b96f4054d3a80ae031a0',1,'ippl::FFT&lt; SineTransform, Field &gt;::transform()'],['../classippl_1_1FFT_3_01CosTransform_00_01Field_01_4.html#a248bbf72da0cabf4caadd74e1c647da4',1,'ippl::FFT&lt; CosTransform, Field &gt;::transform()'],['../classippl_1_1FFT_3_01Cos1Transform_00_01Field_01_4.html#a1cf603e09dc3ebd29660b7f5a0139c86',1,'ippl::FFT&lt; Cos1Transform, Field &gt;::transform()']]]
-];
