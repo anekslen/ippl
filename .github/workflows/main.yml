@@ -8,7 +8,8 @@ on:
   push:
     branches: [ master ]
 
-permissions: write-all
+permissions:
+  pages: write
   
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -22,12 +23,16 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v4
         
-    - name: Action Doxygen and GitHub Pages
-      id: ghaction
-      uses: AgarwalSaurav/ghaction-doxygen-ghpages@v2.0.0
+    - name: Doxygen Action
+      uses: mattnotmitt/doxygen-action@v1.9.5
+      with:
+        # Working directory
+        working-directory: "doc/" # default is .
+        # Path to Doxyfile
+        doxyfile-path: "Doxyfile" # default is ./Doxyfile
+    
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: .
-        doxyfile-path: doc/Doxyfile
-        html-output-folder: doc/html
-        branch: gh-pages
+        publish_dir: doc/html
