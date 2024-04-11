@@ -26,12 +26,12 @@ jobs:
       uses: mattnotmitt/doxygen-action@v1.9.5
       with:
         # Working directory
-        working-directory: "doc/" # default is .
+        working-directory: "./doc/" # default is .
         # Path to Doxyfile
-        doxyfile-path: "Doxyfile" # default is ./Doxyfile
+        doxyfile-path: "./Doxyfile" # default is ./Doxyfile
     
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: doc/html
+        publish_dir: ./doc/html
