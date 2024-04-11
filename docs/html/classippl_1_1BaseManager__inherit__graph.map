@@ -1,0 +1,4 @@
+<map id="ippl::BaseManager" name="ippl::BaseManager">
+<area shape="rect" id="node1" title="A base class for managing simulations using IPPL." alt="" coords="21,5,168,171"/>
+<area shape="rect" id="node2" href="$classippl_1_1PicManager.html" title="A template class for managing Particle&#45;in&#45;Cell (PIC) simulations." alt="" coords="5,219,184,516"/>
+</map>
