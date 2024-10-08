@@ -6,5 +6,5 @@ var searchData=
   ['basics_3a_20index_20and_20ndindex_3',['Basics: Index and NDIndex',['../basic_index.html',1,'']]],
   ['basics_3a_20mesh_4',['Basics: Mesh',['../basic_mesh.html',1,'']]],
   ['basics_3a_20particles_5',['Basics: Particles',['../basic_particle.html',1,'']]],
-  ['basics_3a_20solver_6',['Basics: Solver',['../basic_solver.html',1,'']]]
+  ['basics_3a_20solver_20_7b_23solver_7d_6',['Basics: Solver {#Solver}',['../basic_solver.html',1,'']]]
 ];
