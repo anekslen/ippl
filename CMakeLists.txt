@@ -54,7 +54,7 @@ file(
 file(
     DOWNLOAD
     https://raw.githubusercontent.com/manuel5975p/stb/master/stb_image_write.h
-    "${CMAKE_BINARY_DIR}/downloaded_headers/stb_image_write.hpp"
+    "${CMAKE_BINARY_DIR}/downloaded_headers/stb_image_write.h"
 )
 include_directories("${CMAKE_BINARY_DIR}/downloaded_headers/")
 
