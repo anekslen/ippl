@@ -14,7 +14,7 @@
 #include <json.hpp>
 #include <list>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image_write.hpp>
+#include <stb_image_write.h>
 
 #include "Undulator.h"
 #include "units.h"
