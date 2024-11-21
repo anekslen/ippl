@@ -1,6 +1,6 @@
 #ifndef NSFDSOLVERWITHPARTICLES_H
 #define NSFDSOLVERWITHPARTICLES_H
-#include "MaxwellSolvers/FDTD.h"
+#include "MaxwellSolvers/NonStandardFDTDSolver.h"
 namespace ippl{
     template <typename _scalar, class PLayout>
     struct Bunch : public ippl::ParticleBase<PLayout> {

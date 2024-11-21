@@ -107,6 +107,13 @@ constexpr float turbo_cm[256][3] = {
     {0.51989, 0.02756, 0.00780}, {0.50664, 0.02354, 0.00863}, {0.49321, 0.01963, 0.00955},
     {0.47960, 0.01583, 0.01055}};
 
+constexpr double sq(double x) {
+        return x * x;
+    }
+    constexpr float sq(float x) {
+        return x * x;
+    }
+
 uint64_t nanoTime() {
     using namespace std;
     using namespace chrono;

@@ -3,7 +3,9 @@ set (_SRCS
 
 set (_HDRS
     Maxwell.h
-    FDTD.h
+    FDTDSolverBase.h
+    StandardFDTDSolver.h
+    NonStandardFDTDSolver.h
 )
 
 include_DIRECTORIES (
