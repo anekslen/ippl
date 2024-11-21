@@ -19,19 +19,11 @@ namespace ippl {
     template <typename EMField, typename SourceField, fdtd_bc boundary_conditions = periodic>
     class FDTDSolverBase : public Maxwell<EMField, SourceField> {
     public:
-        // TODO: Any reason to not use std::pow(x, 2)?
-        constexpr double sq(double x) {
-            return x * x;
-        }
-        constexpr float sq(float x) {
-            return x * x;
-        }
-        #define assert_isreal(X) assert(!Kokkos::isnan(X) && !Kokkos::isinf(X))
-        
         constexpr static unsigned Dim = EMField::dim;
         using scalar                  = typename EMField::value_type::value_type;
         using Vector_t                = Vector<typename EMField::value_type::value_type, Dim>;
         using SourceVector_t            = typename SourceField::value_type;
+
         FDTDSolverBase(SourceField& source, EMField& E, EMField& B);
         void solve() override;
 

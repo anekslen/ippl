@@ -107,13 +107,6 @@ constexpr float turbo_cm[256][3] = {
     {0.51989, 0.02756, 0.00780}, {0.50664, 0.02354, 0.00863}, {0.49321, 0.01963, 0.00955},
     {0.47960, 0.01583, 0.01055}};
 
-constexpr double sq(double x) {
-        return x * x;
-    }
-    constexpr float sq(float x) {
-        return x * x;
-    }
-
 uint64_t nanoTime() {
     using namespace std;
     using namespace chrono;
@@ -1457,7 +1450,7 @@ int main(int argc, char* argv[]) {
         std::cout << "hx: " << hx << "\n";
         std::cout << "origin: " << origin << "\n";
         std::cout << "extents: " << cfg.extents << std::endl;
-        if (sq(hx[2] / hx[0]) + sq(hx[2] / hx[1]) >= 1) {
+        if (Kokkos::pow(hx[2] / hx[0], 2) + Kokkos::pow(hx[2] / hx[1], 2) >= 1) {
             std::cerr << "Dispersion relation not satisfiable\n";
             abort();
         }

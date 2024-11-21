@@ -20,11 +20,11 @@ namespace ippl {
         const auto source_view = Maxwell<EMField, SourceField>::JN_mp->getView();
 
         const scalar a1 =
-            scalar(2) * (scalar(1) - this->sq(this->dt / this->hr_m[0]) - sq(this->dt / this->hr_m[1]) - sq(this->dt / this->hr_m[2]));
-        const scalar a2               = this->sq(this->dt / this->hr_m[0]);
-        const scalar a4               = this->sq(this->dt / this->hr_m[1]);
-        const scalar a6               = this->sq(this->dt / this->hr_m[2]);
-        const scalar a8               = this->sq(this->dt);
+            scalar(2) * (scalar(1) - Kokkos::pow(this->dt / this->hr_m[0], 2) - Kokkos::pow(this->dt / this->hr_m[1], 2) - Kokkos::pow(this->dt / this->hr_m[2], 2));
+        const scalar a2               = Kokkos::pow(this->dt / this->hr_m[0], 2);
+        const scalar a4               = Kokkos::pow(this->dt / this->hr_m[1], 2);
+        const scalar a6               = Kokkos::pow(this->dt / this->hr_m[2], 2);
+        const scalar a8               = Kokkos::pow(this->dt, 2);
         Vector<uint32_t, Dim> true_nr = this->nr_m;
         true_nr += (nghost * 2);
         constexpr uint32_t one_if_absorbing_otherwise_0 =

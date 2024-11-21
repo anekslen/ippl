@@ -19,7 +19,6 @@ namespace ippl {
     public:
         StandardFDTDSolver(SourceField& source, EMField& E, EMField& B);
 
-        // TODO: Can this be inherited?
         constexpr static unsigned Dim = EMField::dim;
         using scalar                  = typename EMField::value_type::value_type;
         using Vector_t                = Vector<typename EMField::value_type::value_type, Dim>;

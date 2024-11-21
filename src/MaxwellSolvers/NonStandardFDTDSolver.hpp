@@ -24,15 +24,15 @@ namespace ippl {
         const auto anm1view    = this->A_nm1.getView();
         const auto source_view = Maxwell<EMField, SourceField>::JN_mp->getView();
 
-        const scalar calA = 0.25 * (1 + 0.02 / (this->sq(this->hr_m[2] / this->hr_m[0]) + this->sq(this->hr_m[2] / this->hr_m[1])));
+        const scalar calA = 0.25 * (1 + 0.02 / (Kokkos::pow(this->hr_m[2] / this->hr_m[0], 2) + Kokkos::pow(this->hr_m[2] / this->hr_m[1], 2)));
         nondispersive<scalar> ndisp{
             .a1 = 2
-                    * (1 - (1 - 2 * calA) * this->sq(this->dt / this->hr_m[0]) - (1 - 2 * calA) * this->sq(this->dt / this->hr_m[1])
-                        - this->sq(this->dt / this->hr_m[2])),
-            .a2 = this->sq(this->dt / this->hr_m[0]),
-            .a4 = this->sq(this->dt / this->hr_m[1]),
-            .a6 = this->sq(this->dt / this->hr_m[2]) - 2 * calA * this->sq(this->dt / this->hr_m[0]) - 2 * calA * this->sq(this->dt / this->hr_m[1]),
-            .a8 = this->sq(this->dt)};
+                    * (1 - (1 - 2 * calA) * Kokkos::pow(this->dt / this->hr_m[0], 2) - (1 - 2 * calA) * Kokkos::pow(this->dt / this->hr_m[1], 2)
+                        - Kokkos::pow(this->dt / this->hr_m[2], 2)),
+            .a2 = Kokkos::pow(this->dt / this->hr_m[0], 2),
+            .a4 = Kokkos::pow(this->dt / this->hr_m[1], 2),
+            .a6 = Kokkos::pow(this->dt / this->hr_m[2], 2) - 2 * calA * Kokkos::pow(this->dt / this->hr_m[0], 2) - 2 * calA * Kokkos::pow(this->dt / this->hr_m[1], 2),
+            .a8 = Kokkos::pow(this->dt, 2)};
         Vector<uint32_t, Dim> true_nr = this->nr_m;
         true_nr += (nghost * 2);
         constexpr uint32_t one_if_absorbing_otherwise_0 =
