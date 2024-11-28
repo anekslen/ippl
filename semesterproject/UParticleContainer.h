@@ -37,8 +37,8 @@ public:
 
 	void registerAttributes() {
 		// Add attributes to the particle bunch
-        // R is the reference position in the domain of the unstructured grid
-        this->addAttribute(RReal);      // Real position attribute
+        // R is the cartesian coordinate reference position in the domain of the unstructured grid
+        this->addAttribute(RReal);      // Cartesian coordinate real position attribute
         this->addAttribute(RCylRef);    // Cylindrical coordinate reference position attribute in the domain of the unstructured grid
         this->addAttribute(RCylReal);   // Cylindrical coordinate real position attribute
         this->addAttribute(Q);          // Charge attribute in C
