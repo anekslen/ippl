@@ -41,11 +41,11 @@ protected:
     Vector_t<double, Dim> hr_m;
     Vector_t<double, Dim> origin_m;
     std::array<bool, Dim> decomp_m;
-    bool isAllPeriodic_m;
+    bool isAllPeriodic_m;   // TODO: two times
     Mesh_t mesh_m
 
     // variables for dummy field layout used in particle container
-    std::array<bool, Dim> decomp_m;
+    std::array<bool, Dim> decomp_m; // TODO: rename
     bool isAllPeriodic_m;
     FieldLayout_t fl_m;
 

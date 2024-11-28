@@ -27,7 +27,6 @@ class FusionReactorManager
 public:
     using UParticleContainer_t = UParticleContainer<T, Dim>;
     using UnstructuredFieldContainer_t = UnstructuredFieldContainer<T, Dim>;
-    using DummyFieldContainer_t = FieldContainer<T, Dim>;
 
     FusionReactorManager(size_type totalP_, int nt_, std::string& stepMethod_)
         : UnstructuredGridManager<T, Dim, ParticleContainer<T, Dim>, UnstructuredFieldContainer<T, Dim>>(size_type totalP_, int nt_, std::string& stepMethod_)
@@ -46,9 +45,6 @@ public:
 
         // Create an unstructured field container
         this->setUFieldContainer( std::make_shared<UnstructuredFieldContainer_t>(filename) );
-
-
-        // Create dummy mesh and field layout for the particle container
 
         // Initialize variables for dummy mesh
         this->nr_m = 100;                                                       // TODO: this is chosen randomly
@@ -75,49 +71,64 @@ public:
 
         initializeParticles();
 
+        // Get B value at the initial particle positions    // TODO: not needed probably
+        this->pcontainer_m->B = ufc->getB(this->pcontainer_m->RReal);
+
         m << "Initialization done";
     }
 
     void initializeParticles(){
         Inform m("Initialize Particles");
+
+        std::shared_ptr<ParticleContainer_t> pc = this->pcontainer_m;
+        std::shared_ptr<UnstructuredFieldContainer_t> ufc    = this->ufcontainer_m;
+
         static IpplTimings::TimerRef particleCreation = IpplTimings::getTimer("particlesCreation");
         IpplTimings::startTimer(particleCreation);
 
-        this->pcontainer_m->create(this->totalP_m);
+        pc->create(this->totalP_m);
 
         assert(this->totalP_m == 1);    // TODO: change this to read initial particle positions from a file
 
         // Set initial particle positions
-        this->pcontainer_m->RCylReal(0) = Vector_t(0.318, M_PI / 2.0, 0.43);                // Initial real position in cylindrical coordinates
-        this->pcontainer_m->RReal(0) = Vector_t(                                            // Initial real position in cartesian coordinates
-            this->pcontainer_m->RCylReal(0)[0] * Kokkos::cos(this->pcontainer_m->RCylReal(0)[1]),
-            this->pcontainer_m->RCylReal(0)[0] * Kokkos::sin(this->pcontainer_m->RCylReal(0)[1]),
-            this->pcontainer_m->RCylReal(0)[2]
+        pc->RCylReal(0) = Vector_t(0.318, M_PI / 2.0, 0.43);                // Initial real position in cylindrical coordinates
+        pc->RReal(0) = Vector_t(                                            // Initial real position in cartesian coordinates
+            pc->RCylReal(0)[0] * Kokkos::cos(pc->RCylReal(0)[1]),
+            pc->RCylReal(0)[0] * Kokkos::sin(pc->RCylReal(0)[1]),
+            pc->RCylReal(0)[2]
         );
 
-        if(static_cast<int>(this->pcontainer_m->RCylReal(0, 1) / (M_PI / 4.0)) % 2 == 0){   // Initial reference position in cylindrical coordinates
-            this->pcontainer_m->RCylRef(0) = Vector_t(this->pcontainer_m->RCylReal(0)[0], Kokkos::fmod(this->pcontainer_m->RCylReal(0)[1], M_PI / 2.0), Kokkos::abs(this->pcontainer_m->RCylReal(0)[2]));
+        if(static_cast<int>(pc->RCylReal(0)[1] / (M_PI / 4.0)) % 2 == 0){   // Initial reference position in cylindrical coordinates
+            pc->RCylRef(0) = Vector_t(pc->RCylReal(0)[0], Kokkos::fmod(pc->RCylReal(0)[1], M_PI / 2.0), Kokkos::abs(pc->RCylReal(0)[2]));
         }
         else{
-            this->pcontainer_m->RCylRef(0) = Vector_t(this->pcontainer_m->RCylReal(0)[0], M_PI / 4.0 - Kokkos::fmod(this->pcontainer_m->RCylReal(0)[1], M_PI / 4.0), Kokkos::abs(this->pcontainer_m->RCylReal(0)[2]));
+            pc->RCylRef(0) = Vector_t(pc->RCylReal(0)[0], M_PI / 4.0 - Kokkos::fmod(pc->RCylReal(0)[1], M_PI / 4.0), Kokkos::abs(pc->RCylReal(0)[2]));
         }
 
-        this->pcontainer_m->R(0) = this->pcontainer_m->RReal(0) = Vector_t(                 // Initial reference position in cartesian coordinates
-            this->pcontainer_m->RCylRef(0)[0] * Kokkos::cos(this->pcontainer_m->RCylRef(0)[1]),
-            this->pcontainer_m->RCylRef(0)[0] * Kokkos::sin(this->pcontainer_m->RCylRef(0)[1]),
-            this->pcontainer_m->RCylRef(0)[2]
+        pc->R(0) = pc->RReal(0) = Vector_t(                 // Initial reference position in cartesian coordinates
+            pc->RCylRef(0)[0] * Kokkos::cos(pc->RCylRef(0)[1]),
+            pc->RCylRef(0)[0] * Kokkos::sin(pc->RCylRef(0)[1]),
+            pc->RCylRef(0)[2]
         );
 
+        // Check if the initial particle position is inside the domain
+        int cellId = ufc->GetGridCell(pc->R(0));
+        assert(cellId != -1);
+
         // Set initial particle charge in C and mass in kg
-        this->pcontainer_m->Q(0) = 1.602e-19;  
-        this->pcontainer_m->mass(0) = 1.673e-27;
+        pc->Q(0) = 1.602e-19;  
+        pc->mass(0) = 1.673e-27;
 
         // Set initial particle energy in J
-        this->pcontainer_m->Ek(0) = 100 * 1.602e-19;
+        pc->Ek(0) = 100 * 1.602e-19;
 
         // Set initial particle velocity in m/s
-        double absv = Kokkos::sqrt(2.0 * this->pcontainer_m->Ek(0) / this->pcontainer_m->mass(0));
-        this->pcontainer_m->V(0) = Vector_t(absv/2, absv/2, 0.0);
+        double absv = Kokkos::sqrt(2.0 * pc->Ek(0) / pc->mass(0));
+        pc->V(0) = Vector_t(absv/2, absv/2, 0.0);
+
+        // Calculate initial change of velocity
+        ufc->interpolateField("B_field", pc->R(0), pc->B(0), cellId);
+        pc->dV(0) = pc->Q(0) * pc->V(0).cross(pc->B(0));
 
         IpplTimings::stopTimer(particleCreation);
         m << "particles created and initial conditions assigned " << endl;
@@ -139,104 +150,89 @@ public:
 
         double dt                               = this->dt_m;
         std::shared_ptr<ParticleContainer_t> pc = this->pcontainer_m;
-        std::shared_ptr<UnstructuredFieldContainer_t> fc    = this->fcontainer_m;
+        std::shared_ptr<UnstructuredFieldContainer_t> ufc    = this->ufcontainer_m;
 
         IpplTimings::startTimer(PTimer);
-        pc->P = pc->P - 0.5 * dt * pc->E;
+        pc->V = pc->V + 0.5 * dt * pc->dV;
         IpplTimings::stopTimer(PTimer);
 
         // drift
         IpplTimings::startTimer(RTimer);
-        pc->R = pc->R + dt * pc->P;
+        pc->RReal = pc->RReal + dt * pc->P;
         IpplTimings::stopTimer(RTimer);
 
-        // Since the particles have moved spatially update them to correct processors
+        // Since the particles have moved calculate new reference position, check if particle is still in the grid
         IpplTimings::startTimer(updateTimer);
-        pc->update();
-        IpplTimings::stopTimer(updateTimer);
-
-        size_type totalP        = this->totalP_m;
-        int it                  = this->it_m;
-        bool isFirstRepartition = false;
-        if (this->loadbalancer_m->balance(totalP, it + 1)) {
-                IpplTimings::startTimer(domainDecomposition);
-                auto* mesh = &fc->getRho().get_mesh();
-                auto* FL = &fc->getFL();
-                this->loadbalancer_m->repartition(FL, mesh, isFirstRepartition);
-                IpplTimings::stopTimer(domainDecomposition);
+        // Position in cylindrical coordinates
+        for(int i = 0; i < pc->getTotalNum(); ++i){
+            pc->RCylReal(i) = Vector_t(
+                Kokkos::sqrt(Kokkos::pow(pc->RReal(i)[0], 2) + Kokkos::pow(pc->RReal(i)[1], 2)),
+                Kokkos::atan2(pc->RReal(i)[1], pc->RReal(i)[0]),
+                pc->RReal(i)[2]
+            );
         }
 
-        // scatter the charge onto the underlying grid
-        this->par2grid();
+        // Reference position in cylindrical coordinates
+        if(static_cast<int>(pc->RCylReal(0)[1] / (M_PI / 4.0)) % 2 == 0){
+            for (int i = 0; i < pc->getTotalNum(); ++i) {
+                pc->RCylRef(i) = Vector_t(pc->RCylReal(i)[0], Kokkos::fmod(pc->RCylReal(i)[1], M_PI / 2.0), Kokkos::abs(pc->RCylReal(i)[2]));
+            }
+        }
+        else{
+            for(int i = 0; i < pc->getTotalNum(); ++i){
+                pc->RCylRef(i) = Vector_t(pc->RCylReal(i)[0], M_PI / 4.0 - Kokkos::fmod(pc->RCylReal(i)[1], M_PI / 4.0), Kokkos::abs(pc->RCylReal(i)[2]));
+            }
+        }
 
-        // Field solve
-        IpplTimings::startTimer(SolveTimer);
-        this->fsolver_m->runSolver();
-        IpplTimings::stopTimer(SolveTimer);
+        // Reference position in cartesian coordinates
+        for(int i = 0; i < pc->getTotalNum(); ++i){
+            pc->R(i) = Vector_t(
+                pc->RCylRef(i)[0] * Kokkos::cos(pc->RCylRef(i)[1]),
+                pc->RCylRef(i)[0] * Kokkos::sin(pc->RCylRef(i)[1]),
+                pc->RCylRef(i)[2]
+            );
+        }
 
-        // gather E field
-        this->grid2par();
+        // Check if the particle position is inside the domain
+        Vector_t<int, pc->getTotalNum()> cellIds;
+        for(int i = 0; i < pc->getTotalNum(); ++i){
+            cellIds[i] = ufc->GetGridCell(pc->R(i));
+            assert(cellIds[i] != -1);
+        }
+
+        IpplTimings::stopTimer(updateTimer);
+
+        // Calculate new magnetic field at the new particle position
+        for(int i = 0; i < pc->getTotalNum(); ++i){
+            ufc->interpolateField("B_field", pc->R(i), pc->B(i), cellIds[i]);
+        }
+
+        // Calculate new change of velocity
+        for(int i = 0; i < pc->getTotalNum(); ++i){
+            pc->dV(i) = pc->Q(i) * pc->V(i).cross(pc->B(i));
+        }
 
         // kick
         IpplTimings::startTimer(PTimer);
-        pc->P = pc->P - 0.5 * dt * pc->E;
+        pc->P = pc->P + 0.5 * dt * pc->dV;
         IpplTimings::stopTimer(PTimer);
     }
 
     void dump() override {
         static IpplTimings::TimerRef dumpDataTimer = IpplTimings::getTimer("dumpData");
         IpplTimings::startTimer(dumpDataTimer);
-        dumpLandau(this->fcontainer_m->getE().getView());
+        dumpPositions();
         IpplTimings::stopTimer(dumpDataTimer);
     }
 
     template <typename View>
-    void dumpLandau(const View& Eview) {
-        const int nghostE = this->fcontainer_m->getE().getNghost();
+    void dumpPositions() {
+        Inform m("dumpPositions");
 
-        using index_array_type = typename ippl::RangePolicy<Dim>::index_array_type;
-        double localEx2 = 0, localExNorm = 0;
-        ippl::parallel_reduce(
-            "Ex stats", ippl::getRangePolicy(Eview, nghostE),
-            KOKKOS_LAMBDA(const index_array_type& args, double& E2, double& ENorm) {
-                // ippl::apply<unsigned> accesses the view at the given indices and obtains a
-                // reference; see src/Expression/IpplOperations.h
-                double val = ippl::apply(Eview, args)[0];
-                double e2  = Kokkos::pow(val, 2);
-                E2 += e2;
-
-                double norm = Kokkos::fabs(ippl::apply(Eview, args)[0]);
-                if (norm > ENorm) {
-                    ENorm = norm;
-                }
-            },
-            Kokkos::Sum<double>(localEx2), Kokkos::Max<double>(localExNorm));
-
-        double globaltemp = 0.0;
-        ippl::Comm->reduce(localEx2, globaltemp, 1, std::plus<double>());
-
-        double fieldEnergy =
-            std::reduce(this->fcontainer_m->getHr().begin(), this->fcontainer_m->getHr().end(), globaltemp, std::multiplies<double>());
-
-        double ExAmp = 0.0;
-        ippl::Comm->reduce(localExNorm, ExAmp, 1, std::greater<double>());
-
-        if (ippl::Comm->rank() == 0) {
-            std::stringstream fname;
-            fname << "data/FieldLandau_";
-            fname << ippl::Comm->size();
-            fname << "_manager";
-            fname << ".csv";
-            Inform csvout(NULL, fname.str().c_str(), Inform::APPEND);
-            csvout.precision(16);
-            csvout.setf(std::ios::scientific, std::ios::floatfield);
-            if ( std::fabs(this->time_m) < 1e-14 ) {
-                csvout << "time, Ex_field_energy, Ex_max_norm" << endl;
-            }
-            csvout << this->time_m << " " << fieldEnergy << " " << ExAmp << endl;
+        for (int i = 0; i < this->pcontainer_m->size(); ++i) {
+            m << "Time " << this->time_m << "Particle " << i << ": Position = " << this->pcontainer_m->R(i)
+              << ", Velocity = " << this->pcontainer_m->V(i) << std::endl;
         }
-        ippl::Comm->barrier();
-    }
 };
 #endif
 

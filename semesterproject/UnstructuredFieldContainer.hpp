@@ -147,9 +147,9 @@ public:
 
 
     // Return the Id of the grid cell in which a point is located
-    int GetGridCell(double x, double y, double z) {
+    int GetGridCell(Vector_t<double, Dim> R) {
         vtkIdType cellId = -1;
-        double p[Dim] = { x, y, z };
+        double p[Dim] = { R[0], R[1], R[2] };
         double pcoords[Dim];
         double weights[8];
         int subId;
@@ -162,7 +162,7 @@ public:
     }
 
     // Interpolate a field at a given point TODO: Finish this function
-    void interpolateField(const char* field_name, double x, double y, double z, std::vector<int> &interpolatedField, int cellID = -1, double weights[8] = NULL)
+    void interpolateField(const char* field_name, Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField, int cellID = -1, double weights[8] = NULL)
     {
         // Check that the field exists in the grid and is a vector field
         assert(grid->GetPointData()->HasArray(field_name));
@@ -170,7 +170,7 @@ public:
 
         if (cellID == -1 || weights == NULL) {
             // Find the cell that contains the point (x, y, z)
-            double p[Dim] = { x, y, z };
+            double p[Dim] = { R[0], R[1], R[2] };
             double pcoords[Dim];
             double weights[8];
             int subId;

@@ -18,6 +18,7 @@ public:
     ippl::ParticleAttrib<double> mass;                      // Mass container
     ippl::ParticleAttrib<double> Ek;                        // Energy container
     typename Base::particle_position_type V;                // Velocity container
+    typename Base::particle_position_type dV;               // Change of velocity container
     typename Base::particle_position_type B;                // Magnetic field container
 private:
     PLayout_t<T, Dim> pl_m;
@@ -45,6 +46,7 @@ public:
         this->addAttribute(mass);       // Mass attribute in kg
         this->addAttribute(Ek);         // Energy attribute in J
         this->addAttribute(V);          // Velocity attribute in m/s
+        this->addAttribute(dV);          // Cange of velocity attribute in m/s
         this->addAttribute(B);          // Magnetic field attribute in T
 	}
 	void setupBCs() { setBCAllNo(); }
