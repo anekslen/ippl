@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.20.3)
-project (IPPL CXX)
+project (IPPL C CXX)
 set (IPPL_VERSION_MAJOR 3)
 set (IPPL_VERSION_MINOR 0.2)
 include(FetchContent)
@@ -264,6 +264,12 @@ if (ENABLE_UNIT_TESTS)
 
     add_subdirectory (unit_tests)
 endif ()
+
+option(ENABLE_VTK "Enable VTK" OFF)
+if (ENABLE_VTK)
+    find_package(VTK REQUIRED)
+    add_subdirectory (semesterproject)
+endif()
 
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config_install.cmake )

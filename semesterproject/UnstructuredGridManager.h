@@ -3,35 +3,32 @@
 
 #include <memory>
 
-#include "UnstructuredFieldContainer.hpp"
 #include "Manager/BaseManager.h"
-#include "UParticleContainer.hpp"
+#include "UnstructuredFieldContainer.hpp"
+#include "UParticleContainer.h"
 
 template <typename T, unsigned Dim, class pc = UParticleContainer<T, Dim>, class ufc = UnstructuredFieldContainer<T, Dim>>
-class UnstructuredGridManager : public BaseManager {
+class UnstructuredGridManager : public ippl::BaseManager {
 public:
-    using UParticleContainer_t = UParticleContainer<T, Dim>;
-    using UnstructuredFieldContainer_t = UnstructuredFieldContainer<T, Dim>;
-protected:
-    size_type totalP_m;
-    int nt_m;
-    std::string stepMethod_m;
-public:
-    UnstructuredGridManager(size_type totalP_, int nt_, Vector_t<int, std::string& stepMethod_)
-        : BaseManager()
-        , ufcontainer_m(nullptr)
-        , pcontainer_m(nullptr)
+    UnstructuredGridManager(size_type totalP_, int nt_, std::string& stepMethod_)
+        : ippl::BaseManager()
         , totalP_m(totalP_)
         , nt_m(nt_)
-        , stepMethod_m(stepMethod_){}
+        , stepMethod_m(stepMethod_)
+        , pcontainer_m(nullptr)
+        , ufcontainer_m(nullptr) {}
     ~UnstructuredGridManager(){}
 
 protected:
+    size_type totalP_m;                         // total number of particles
+    int nt_m;                                   // number of time steps
+    std::string stepMethod_m;                   // time integration method (only LeapFrog is implemented)
+    std::shared_ptr<pc> pcontainer_m;           // particle container
+    std::shared_ptr<ufc> ufcontainer_m;         // unstructured field container
+
     double time_m;                              // simulation time
     double dt_m;                                // time step
     int it_m;                                   // iteration number
-    std::shared_ptr<ufc> ufcontainer_m;         // unstructured field container
-    std::shared_ptr<pc> pcontainer_m;           // particle container
 
     // variables for dummy mesh used in particle container
     Vector_t<int, Dim> nr_m;
@@ -40,14 +37,12 @@ protected:
     Vector_t<double, Dim> rmax_m;
     Vector_t<double, Dim> hr_m;
     Vector_t<double, Dim> origin_m;
-    std::array<bool, Dim> decomp_m;
-    bool isAllPeriodic_m;   // TODO: two times
-    Mesh_t mesh_m
+    Mesh_t<Dim> mesh_m;
 
     // variables for dummy field layout used in particle container
-    std::array<bool, Dim> decomp_m; // TODO: rename
+    std::array<bool, Dim> decomp_m;
     bool isAllPeriodic_m;
-    FieldLayout_t fl_m;
+    FieldLayout_t<Dim> fl_m;
 
 
 public:
@@ -85,17 +80,20 @@ public:
         m << "Finished time step: " << this->it_m << " time: " << this->time_m << endl;
     }
 
+    /*
+    Not needed functions, TODO: possibly delete later
     void grid2par() override { gatherCIC(); }
 
     void gatherCIC() {
-        /*TODO: implement gatherCIC, even needed?*/
+        //TODO: implement gatherCIC, even needed?
     }
 
     void par2grid() { scatterCIC(); }
 
     void scatterCIC() {
-        /*TODO: implement scatterCIC, even needed?*/
+        //TODO: implement scatterCIC, even needed?
 	}
+    */
 
     std::shared_ptr<pc> getParticleContainer() {
         return pcontainer_m;

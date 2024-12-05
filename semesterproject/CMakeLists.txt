@@ -17,6 +17,10 @@ add_executable(FusionReactor FusionReactor.cpp)
 target_link_libraries(FusionReactor PRIVATE ${IPPL_LIBS} ${VTK_LIBRARIES})
 vtk_module_autoinit( TARGETS FusionReactor MODULES ${VTK_LIBRARIES})
 
+add_executable(TestUnstructuredFieldContainer TestUnstructuredFieldContainer.cpp)
+target_link_libraries(TestUnstructuredFieldContainer PRIVATE ${IPPL_LIBS} ${VTK_LIBRARIES})
+vtk_module_autoinit( TARGETS TestUnstructuredFieldContainer MODULES ${VTK_LIBRARIES})
+
 # vi: set et ts=4 sw=4 sts=4:
 
 # Local Variables:

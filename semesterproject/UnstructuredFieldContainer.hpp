@@ -1,27 +1,26 @@
-#ifndef IPPL_FIELD_CONTAINER_H
-#define IPPL_FIELD_CONTAINER_H
+#ifndef IPPL_FIELD_CONTAINER_HPP
+#define IPPL_FIELD_CONTAINER_HPP
+
+#include <vtkSmartPointer.h>
+#include <vtkUnstructuredGrid.h>
+#include <vtkUnstructuredGridReader.h>
+#include <vtkUnstructuredGridWriter.h>
+#include <vtkGradientFilter.h>
+#include <vtkArrayCalculator.h>
+#include <vtkCellLocator.h>
+#include <vtkPointData.h>
+
+#include "datatypes.h"
+
+// TODO: Fix fieldname issue
 
 // Define the FieldsContainer class
-template <typename T, unsigned Dim = 3>
+template <typename T, unsigned Dim>
 class UnstructuredFieldContainer{
 public:
-    UnstructuredFieldContainer(const char* filename, const char* B_field_name = "B_Field") : B_field_name_m(B_field_name) {
+    UnstructuredFieldContainer(const char* grid_filename, const char* B_field_name = "B_Field") : B_field_name_m(B_field_name) {
         // Read the grid from the file
-        
-        // Create a reader .vtk file
-        vtkSmartPointer<vtkUnstructuredGridReader> reader = vtkSmartPointer<vtkUnstructuredGridReader>::New();
-        reader->SetFileName(filename);
-        reader->Update();
-        
-        // Get the unstructured grid from the reader
-        grid = reader->GetOutput();
-        assert(grid);
-        
-        // Check that the grid contains points, cells, and a B vector field
-        assert(grid->GetPoints());
-        assert(grid->GetPointData()->HasArray(field_name));
-        assert(grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents() == Dim);
-        assert(grid->GetCells());
+        readGrid(grid_filename);
     }
 
     ~UnstructuredFieldContainer(){}
@@ -30,19 +29,36 @@ private:
     const char* B_field_name_m;
     vtkSmartPointer<vtkUnstructuredGrid> grid;
 
+    void readGrid(const char* grid_filename) {
+        // Create a reader .vtk file
+        vtkSmartPointer<vtkUnstructuredGridReader> reader = vtkSmartPointer<vtkUnstructuredGridReader>::New();
+        reader->SetFileName(grid_filename);
+        reader->Update();
+        
+        // Get the unstructured grid from the reader
+        grid = reader->GetOutput();
+        assert(grid);
+        
+        // Check that the grid contains points, cells, and a B vector field
+        assert(grid->GetPoints());
+        assert(grid->GetPointData()->HasArray(B_field_name_m));
+        assert(grid->GetPointData()->GetArray(B_field_name_m)->GetNumberOfComponents() == Dim);
+        assert(grid->GetCells());
+    }
+
 public:
 
     // Write the grid to a file
-    void writeGrid(const char* filename) {
+    void writeGrid(const char* grid_filename) {
         // Check that the magnitude field exists in the grid and is a scalar field, if required
         vtkSmartPointer<vtkUnstructuredGridWriter> writer = vtkSmartPointer<vtkUnstructuredGridWriter>::New();
-        writer->SetFileName(filename);
+        writer->SetFileName(grid_filename);
         writer->SetInputData(grid);
         writer->Write();
     }
 
     // Write a vector field to a file
-    void writeField(const char* filename, const char* field_name, bool Magnitude = false, const char* magnitude_field_name = "Magnitude") {
+    void writeField(const char* field_filename, const char* field_name = "B_Field", bool Magnitude = false, const char* magnitude_field_name = "Magnitude") {
         
         // Check that the field exists in the grid and is a vector field
         assert(grid->GetPointData()->HasArray(field_name));
@@ -52,7 +68,7 @@ public:
         assert(Magnitude && grid->GetPointData()->GetArray(magnitude_field_name)->GetNumberOfComponents() == 1);
 
         // Write the field values to csv file
-        std::ofstream file(filename);
+        std::ofstream file(field_filename);
 
         if (Magnitude) {
             file << "Point_Index," << field_name << "_X," << field_name << "_Y," << field_name << "_Z," << magnitude_field_name << std::endl;
@@ -91,7 +107,7 @@ public:
     }
 
     // Calculate the curl of the vector field field_name and save it in the output_field_name
-    void calculateCurl(const char* field_name, const char* output_field_name = "Vorticity") {
+    void calculateCurl(const char* field_name = "B_Field", const char* output_field_name = "Vorticity") {
         // Check that the field exists in the grid and is a vector field
         assert(grid->GetPointData()->HasArray(field_name));
         assert(grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents() == Dim);
@@ -113,7 +129,7 @@ public:
     }
 
     // Define functions to calculate the magnitude of a vector field
-    void calculateMagnitude(const char* field_name, const char* output_field_name = "Magnitude") {
+    void calculateMagnitude(const char* field_name = "B_Field", const char* output_field_name = "Magnitude") {
         // Check that the field exists in the grid and is a vector field
         assert(grid->GetPointData()->HasArray(field_name));
         assert(grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents() == Dim);
@@ -136,10 +152,10 @@ public:
         grid->GetPointData()->AddArray(magnitudeCalculator->GetUnstructuredGridOutput()->GetPointData()->GetArray(output_field_name));
     }
 
-    void getGridBounds(Vector<double, Dim> &min, Vector<double, Dim> &max) {
+    void getGridBounds(Vector_t<double, 3> &min, Vector_t<double, 3> &max) {
         double bounds[6];
         grid->GetBounds(bounds);
-        for (int i = 0; i < Dim; i++) {
+        for (unsigned i = 0; i < Dim; i++) {
             min[i] = bounds[i * 2];
             max[i] = bounds[i * 2 + 1];
         }
@@ -148,58 +164,70 @@ public:
 
     // Return the Id of the grid cell in which a point is located
     int GetGridCell(Vector_t<double, Dim> R) {
-        vtkIdType cellId = -1;
-        double p[Dim] = { R[0], R[1], R[2] };
+        // Create and build a cell locator
+        vtkSmartPointer<vtkCellLocator> locator = vtkSmartPointer<vtkCellLocator>::New();
+        locator->SetDataSet(grid);
+        locator->BuildLocator();
+
+        // Find the cell that contains the point (x, y, z)
+        double point[Dim] = { R[0], R[1], R[2] };
+        double tol2 = 0.0;
+        vtkSmartPointer<vtkGenericCell> GenCell = vtkSmartPointer<vtkGenericCell>::New();
         double pcoords[Dim];
         double weights[8];
-        int subId;
-        double dist2 = -1.0;
-
-        // Optimization if previous cell is known (set cellId and cell to previous cell)
         // TODO: Not thread save, check this !!!!!!
-        cellId = grid->FindCell(p, NULL, 0, 0, dist2, subId, pcoords, weights);
+        vtkIdType cellId = locator->FindCell(point, tol2, GenCell, pcoords, weights);
         return cellId;
     }
 
-    // Interpolate a field at a given point TODO: Finish this function
-    void interpolateField(const char* field_name, Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField, int cellID = -1, double weights[8] = NULL)
-    {
+    vtkIdType FindCellAndInterpolateField(Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField, const char* field_name = "B_Field") {
         // Check that the field exists in the grid and is a vector field
         assert(grid->GetPointData()->HasArray(field_name));
-        assert(grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents() == Dim); return;
+        assert(grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents() == Dim);
 
-        if (cellID == -1 || weights == NULL) {
-            // Find the cell that contains the point (x, y, z)
-            double p[Dim] = { R[0], R[1], R[2] };
-            double pcoords[Dim];
-            double weights[8];
-            int subId;
-            double dist2 = -1.0;
-            // Optimization if previous cell is known (set cellId and cell to previous cell)
-            // TODO: Not thread save, check this !!!!!!
-            cellID = grid->FindCell(p, NULL, 0, 0, dist2, subId, pcoords, weights);
+        // Set the interpolated field to zero
+        interpolatedField = Vector_t<double, Dim>(0.0);
 
-            // Access the field
-            vtkDataArray* fieldArray = grid->GetPointData()->GetArray(field_name);
-            if (!fieldArray) {
-                std::cerr << "Error: Failed to get the " << field_name << " array from the mesh!" << std::endl;
-                return;
-            }
+        // Create and build a cell locator
+        vtkSmartPointer<vtkCellLocator> locator = vtkSmartPointer<vtkCellLocator>::New();
+        locator->SetDataSet(grid);
+        locator->BuildLocator();
 
-            // Get the point indices of the cell in which the point (x, y, z) is located
-            vtkIdList* pointIds = grid->GetCell(cellID)->GetPointIds();
-            
-            // Interpolate the field at the point (x, y, z)
-            vtkIdType interpolationValues[Dim];
+        // Find the cell that contains the point (x, y, z)
+        double point[Dim] = { R[0], R[1], R[2] };
+        double tol2 = 0.0;
+        vtkSmartPointer<vtkGenericCell> genCell = vtkSmartPointer<vtkGenericCell>::New();
+        double pcoords[Dim];
+        double weights[8];
+        vtkIdType cellId = locator->FindCell(point, tol2, genCell, pcoords, weights);
 
-            fieldArray->InterpolateTuple(interpolationValues, pointIds, fieldArray, weights);
 
-            for(int i = 0; i < Dim; i++) {
-                interpolatedField[i] = interpolationValues[i];
-            }
-            
-            return;
+        // Check that the point is inside the grid
+        if(cellId == -1) {
+            std::cerr << "Error: The point is outside the grid!" << std::endl;
+            return cellId;
         }
+
+        // Get the cell that contains the point
+        vtkSmartPointer<vtkCell> cell = grid->GetCell(cellId);
+
+        // Access the field
+        vtkSmartPointer<vtkDataArray> fieldArray = grid->GetPointData()->GetArray(B_field_name_m);
+
+        double B_val[Dim];        
+        for(unsigned i = 0; i < cell->GetNumberOfPoints(); i++) {
+            vtkIdType pointId = cell->GetPointId(i);
+            fieldArray->GetTuple(pointId, B_val);
+            for(unsigned j = 0; j < Dim; j++) {
+                interpolatedField[j] += weights[i] * B_val[j];
+            }
+        }
+        return cellId;
+    }
+
+    void interpolateField(Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField, const char* field_name = "B_Field")
+    {
+        FindCellAndInterpolateField(R, interpolatedField, field_name);
     }
 };
 
