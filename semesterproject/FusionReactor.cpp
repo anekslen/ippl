@@ -8,7 +8,7 @@
 //     grid_file_name = path to the grid file in VTK format
 
 //     Example:
-//     ./FusionReactor 1 20 LeapFrog reactormesh/mesh.vtk --info 10
+//     ./FusionReactor 1 20 LeapFrog reactormesh/mesh.vtk reactormesh/InitialParticles.csv --info 10
 
 constexpr unsigned Dim = 3;
 using T                = double;
@@ -46,13 +46,15 @@ int main(int argc, char* argv[]) {
         size_type totalP   = std::atoll(argv[arg++]);
         int nt             = std::atoi(argv[arg++]);
         std::string step_method = argv[arg++];
-        const char * grid_filename = argv[arg++];
+        const char* grid_filename = argv[arg++];
+        const char* particles_filename = argv[arg++];
+        double dt = std::atof(argv[arg++]);
 
         // Create an instance of a manger for the considered application
-        FusionReactorManager<T, Dim> manager(totalP, nt, step_method);
+        FusionReactorManager<T, Dim> manager(totalP, nt, step_method, dt);
 
         // Perform pre-run operations, including creating mesh, particles,...
-        manager.pre_run(grid_filename);
+        manager.pre_run(grid_filename, particles_filename);
 
         manager.setTime(0.0);
 

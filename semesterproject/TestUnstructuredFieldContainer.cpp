@@ -85,7 +85,9 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
 
-        while (infile >> pointId >> R[0] >> R[1] >> R[2] >> LocatedCell) { // >> GivenB_Field[0] >> GivenB_Field[1] >> GivenB_Field[2]) {
+        std::cout << "Reading points from file" << std::endl;
+
+        while (infile >> pointId >> R[0] >> R[1] >> R[2] >> LocatedCell >> GivenB_Field[0] >> GivenB_Field[1] >> GivenB_Field[2]) {
             // Test GetGridCell
             cellId = ufcontainer->GetGridCell(R);
             if (cellId != LocatedCell) {
@@ -95,18 +97,6 @@ int main(int argc, char *argv[]) {
 
             std::cout << "CellId: " << cellId << std::endl;
 
-            // Test interpolateField
-            ufcontainer->interpolateField(R, InterpolatedB_Field);
-            std::cout << "InterpolatedB_Field: " << InterpolatedB_Field[0] << ", " << InterpolatedB_Field[1] << ", " << InterpolatedB_Field[2] << std::endl;
-            /*
-            for(unsigned i = 0; i < Dim; i++) {
-                if (InterpolatedB_Field[i] != GivenB_Field[i]) {
-                    std::cerr << "Error interpolateField: The interpolated field is not correct! Should be " << GivenB_Field[0] << ", " << GivenB_Field[1] << ", " << GivenB_Field[2] << " but is " << InterpolatedB_Field[0] << ", " << InterpolatedB_Field[1] << ", " << InterpolatedB_Field[2] << std::endl;
-                    exit(1);
-                }
-            }
-            */
-
             // Test FindCellAndInterpolateField
             cellId = ufcontainer->FindCellAndInterpolateField(R, InterpolatedB_Field);
             if (cellId != LocatedCell) {
@@ -114,14 +104,6 @@ int main(int argc, char *argv[]) {
                 exit(1);
             }
             std::cout << "InterpolatedB_Field: " << InterpolatedB_Field[0] << ", " << InterpolatedB_Field[1] << ", " << InterpolatedB_Field[2] << std::endl;
-            /*
-            for(unsigned i = 0; i < Dim; i++) {
-                if (InterpolatedB_Field[i] != GivenB_Field[i]) {
-                    std::cerr << "Error FindCellAndInterpolateField: The interpolated field is not correct! Should be " << GivenB_Field[0] << ", " << GivenB_Field[1] << ", " << GivenB_Field[2] << " but is " << InterpolatedB_Field[0] << ", " << InterpolatedB_Field[1] << ", " << InterpolatedB_Field[2] << std::endl;
-                    exit(1);
-                }
-            }
-            */
 
         }
 

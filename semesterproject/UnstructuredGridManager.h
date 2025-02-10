@@ -10,11 +10,12 @@
 template <typename T, unsigned Dim, class pc = UParticleContainer<T, Dim>, class ufc = UnstructuredFieldContainer<T, Dim>>
 class UnstructuredGridManager : public ippl::BaseManager {
 public:
-    UnstructuredGridManager(size_type totalP_, int nt_, std::string& stepMethod_)
+    UnstructuredGridManager(size_type totalP_, int nt_, std::string& stepMethod_, double dt_)
         : ippl::BaseManager()
         , totalP_m(totalP_)
         , nt_m(nt_)
         , stepMethod_m(stepMethod_)
+        , dt_m(dt_)
         , pcontainer_m(nullptr)
         , ufcontainer_m(nullptr) {}
     ~UnstructuredGridManager(){}
@@ -23,12 +24,14 @@ protected:
     size_type totalP_m;                         // total number of particles
     int nt_m;                                   // number of time steps
     std::string stepMethod_m;                   // time integration method (only LeapFrog is implemented)
-    std::shared_ptr<pc> pcontainer_m;           // particle container
-    std::shared_ptr<ufc> ufcontainer_m;         // unstructured field container
-
+    
     double time_m;                              // simulation time
     double dt_m;                                // time step
     int it_m;                                   // iteration number
+
+    std::shared_ptr<pc> pcontainer_m;           // particle container
+    std::shared_ptr<ufc> ufcontainer_m;         // unstructured field container
+
 
     // variables for dummy mesh used in particle container
     Vector_t<int, Dim> nr_m;

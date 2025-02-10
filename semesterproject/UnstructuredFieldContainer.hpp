@@ -58,7 +58,7 @@ public:
     }
 
     // Write a vector field to a file
-    void writeField(const char* field_filename, const char* field_name = "B_Field", bool Magnitude = false, const char* magnitude_field_name = "Magnitude") {
+    void writeField(const char* field_filename, const char* field_name = "B_Field", bool Magnitude = true, const char* magnitude_field_name = "Magnitude") {
         
         // Check that the field exists in the grid and is a vector field
         assert(grid->GetPointData()->HasArray(field_name));
@@ -152,7 +152,7 @@ public:
         grid->GetPointData()->AddArray(magnitudeCalculator->GetUnstructuredGridOutput()->GetPointData()->GetArray(output_field_name));
     }
 
-    void getGridBounds(Vector_t<double, 3> &min, Vector_t<double, 3> &max) {
+    void getGridBounds(Vector_t<double, Dim> &min, Vector_t<double, Dim> &max) {
         double bounds[6];
         grid->GetBounds(bounds);
         for (unsigned i = 0; i < Dim; i++) {
@@ -161,23 +161,77 @@ public:
         }
     }
 
+    // TODO: this is now done for a grid in cylindric coordinates where we have 1/8 of the xy cyrcle and the upper z part of the grid, generalize this possibly
+    Vector_t<double, Dim> getReferencePosition(Vector_t<double, Dim> R) {
+        Vector_t<double, Dim> R_ref = ippl::fabs(R);
+
+        if(R_ref[0] <= R_ref[1]) {
+            R_ref[0] = std::abs(R[1]);
+            R_ref[1] = std::abs(R[0]);
+        }
+        
+        return R_ref;
+
+    }
+
+    Vector_t<double, Dim> getRealB_field(Vector_t<double, Dim> B, Vector_t<double, Dim> R) {
+        
+        Vector_t<double, Dim> B_real;
+
+        if(std::abs(R[0]) <= std::abs(R[1])) {
+            B_real[0] = B[1];
+            B_real[1] = B[0];
+            B_real[2] = B[2];
+        }
+        else {
+            B_real = B;
+        }
+
+        if(R[0] < 0) {
+            B_real[0] = -B_real[0];
+        }
+
+        if(R[1] < 0) {
+            B_real[1] = -B_real[1];
+        }
+
+        if(R[2] < 0) {
+
+            //B_real[2] = -B_real[2];
+            //B_real = -B_real;
+
+            B_real[0] = -B_real[0];
+            B_real[1] = -B_real[1];
+        }
+
+        return B_real;
+    }
+
 
     // Return the Id of the grid cell in which a point is located
-    int GetGridCell(Vector_t<double, Dim> R) {
+    int GetGridCell(Vector_t<double, Dim> R, double (&weights)[8]) {
+        // Get reference position
+        Vector_t<double, Dim> R_ref = getReferencePosition(R);
+
         // Create and build a cell locator
         vtkSmartPointer<vtkCellLocator> locator = vtkSmartPointer<vtkCellLocator>::New();
         locator->SetDataSet(grid);
         locator->BuildLocator();
 
         // Find the cell that contains the point (x, y, z)
-        double point[Dim] = { R[0], R[1], R[2] };
+        double point[Dim] = { R_ref[0], R_ref[1], R_ref[2] };
         double tol2 = 0.0;
         vtkSmartPointer<vtkGenericCell> GenCell = vtkSmartPointer<vtkGenericCell>::New();
         double pcoords[Dim];
-        double weights[8];
-        // TODO: Not thread save, check this !!!!!!
-        vtkIdType cellId = locator->FindCell(point, tol2, GenCell, pcoords, weights);
+
+        double cellId = locator->FindCell(point, tol2, GenCell, pcoords, weights);
+        
         return cellId;
+    }
+
+    int GetGridCell(Vector_t<double, Dim> R) {
+        double weights[8];
+        return GetGridCell(R, weights);
     }
 
     vtkIdType FindCellAndInterpolateField(Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField, const char* field_name = "B_Field") {
@@ -186,25 +240,13 @@ public:
         assert(grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents() == Dim);
 
         // Set the interpolated field to zero
-        interpolatedField = Vector_t<double, Dim>(0.0);
+        Vector_t<double, Dim> B_field_ref = Vector_t<double, Dim>(0.0);
 
-        // Create and build a cell locator
-        vtkSmartPointer<vtkCellLocator> locator = vtkSmartPointer<vtkCellLocator>::New();
-        locator->SetDataSet(grid);
-        locator->BuildLocator();
-
-        // Find the cell that contains the point (x, y, z)
-        double point[Dim] = { R[0], R[1], R[2] };
-        double tol2 = 0.0;
-        vtkSmartPointer<vtkGenericCell> genCell = vtkSmartPointer<vtkGenericCell>::New();
-        double pcoords[Dim];
+        // Get gridcell and interpolation weights
         double weights[8];
-        vtkIdType cellId = locator->FindCell(point, tol2, genCell, pcoords, weights);
-
-
+        vtkIdType cellId = GetGridCell(R, weights);
         // Check that the point is inside the grid
         if(cellId == -1) {
-            std::cerr << "Error: The point is outside the grid!" << std::endl;
             return cellId;
         }
 
@@ -219,9 +261,13 @@ public:
             vtkIdType pointId = cell->GetPointId(i);
             fieldArray->GetTuple(pointId, B_val);
             for(unsigned j = 0; j < Dim; j++) {
-                interpolatedField[j] += weights[i] * B_val[j];
+                B_field_ref[j] += weights[i] * B_val[j];
             }
         }
+
+        // Get the real field
+        interpolatedField = getRealB_field(B_field_ref, R);
+
         return cellId;
     }
 

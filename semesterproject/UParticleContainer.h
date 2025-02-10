@@ -10,10 +10,6 @@ class UParticleContainer : public ippl::ParticleBase<ippl::ParticleSpatialLayout
 
 public:
     // Declare instances of the attribute containers
-    typename Base::particle_position_type Ref_R;            // Reference position container
-    typename Base::particle_position_type RReal;            // Real position container
-    typename Base::particle_position_type RCylRef;          // Cylindrical coordinate reference position container
-    typename Base::particle_position_type RCylReal;         // Cylindrical coordinate real position container
     ippl::ParticleAttrib<double> Q;                         // Charge container
     ippl::ParticleAttrib<double> mass;                      // Mass container
     ippl::ParticleAttrib<double> Ek;                        // Energy container
@@ -39,10 +35,7 @@ public:
 
 	void registerAttributes() {
 		// Add attributes to the particle bunch
-        // R is the cartesian coordinate reference position in the domain of the unstructured grid
-        this->addAttribute(RReal);      // Cartesian coordinate real position attribute
-        this->addAttribute(RCylRef);    // Cylindrical coordinate reference position attribute in the domain of the unstructured grid
-        this->addAttribute(RCylReal);   // Cylindrical coordinate real position attribute
+        // R is the cartesian coordinate reference position in the domain of the unstructured grids
         this->addAttribute(Q);          // Charge attribute in C
         this->addAttribute(mass);       // Mass attribute in kg
         this->addAttribute(Ek);         // Energy attribute in J

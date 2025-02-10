@@ -1,4 +1,6 @@
 build/
+build_new/
+build_parallel/
 doc/html
 doc/latex
 manual/*.aux
@@ -11,6 +13,7 @@ manual/ippl_user_guide.pdf
 *.txt
 *.vtk
 semesterproject/mesh/reactormesh
+semesterproject/runs
 *~
 *.~
 
