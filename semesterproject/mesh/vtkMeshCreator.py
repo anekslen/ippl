@@ -1,9 +1,9 @@
 import numpy as np
 import vtk
 
-version = input("Test mesh? (t) or Reactor mesh? (r): ")
+version = input("Test mesh? (t) or Reactor mesh old? (rold) or Reactor mesh new? (rnew): ")
 
-while(version != 't' and version != 'r'):
+while(version != 't' and version != 'rold' and version != 'rnew'):
     print("Invalid input. Please enter 't' for the Test mesh or 'r' for the Reactor mesh.")
     version = input("Test mesh? (t) or Reactor mesh? (r): ")
 
@@ -12,10 +12,15 @@ if version == 't':
     elementfile = 'testmesh/vtkInput/mesh.txt'
     fieldfile = 'testmesh/vtkInput/data.txt'
     resultfile = 'mesh.vtk'
-elif version == 'r':
-    nodefile = 'reactormesh/vtkInput/Node22642_I8_3G20_Rev.txt'
-    elementfile = 'reactormesh/vtkInput/Elem19482_8I6_I6_24X_I6.txt'
-    fieldfile = 'reactormesh/vtkInput/B22642_XYZmod_I8_1X_4E12.txt'
+elif version == 'rold':
+    nodefile = 'reactormesh/vtkInput/OldMesh/Node22642_I8_3G20_Rev.txt'
+    elementfile = 'reactormesh/vtkInput/OldMesh/Elem19482_8I6_I6_24X_I6.txt'
+    fieldfile = 'reactormesh/vtkInput/OldMesh/B22642_XYZmod_I8_1X_4E12.txt'
+    resultfile = 'mesh.vtk'
+elif version == 'rnew':
+    nodefile = 'reactormesh/vtkInput/NewMesh/Plasm18592N.txt'
+    elementfile = 'reactormesh/vtkInput/NewMesh/PlasmE15641.txt'
+    fieldfile = 'reactormesh/vtkInput/NewMesh/Plasma_B.txt'
     resultfile = 'mesh.vtk'
 
 

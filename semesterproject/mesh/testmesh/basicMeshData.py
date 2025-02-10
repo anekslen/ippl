@@ -20,6 +20,7 @@ def create_nodedata(nodenumbers, filename, delimiter=' ', origin = [0, 0, 0], do
                     n += 1  # Increment the counter
 
     assert(n == nodenumbers[0] * nodenumbers[1] * nodenumbers[2])
+    print("Node data created successfully")
 
 # Create the data for the mesh elements
 def create_meshdata(nodenumbers, filename, delimiter=' '):
@@ -55,9 +56,10 @@ def create_meshdata(nodenumbers, filename, delimiter=' '):
                     rand4 = 4
 
                     file.write(f"{n1}{delimiter}{n2}{delimiter}{n3}{delimiter}{n4}{delimiter}{n5}{delimiter}{n6}{delimiter}{n7}{delimiter}{n8}{delimiter}{meshtype}{delimiter}{rand1}{delimiter}{rand2}{delimiter}{rand3}{delimiter}{rand4}{delimiter}{elem}\n")
+    print("Mesh data created successfully")
 
 # Create random data for the nodes
-def create_nodevalues(nodenumbers, filename, delimiter=' '):
+def create_nodevalues(nodenumbers, B_field, filename, delimiter=' '):
     # nodenumbers is the number of nodes in each dimension
 
     with open(filename, 'w') as file:
@@ -66,9 +68,11 @@ def create_nodevalues(nodenumbers, filename, delimiter=' '):
         
         # Write the data lines
         for i in range(nodenumbers[0] * nodenumbers[1] * nodenumbers[2]):
-            file.write(f"{i}{delimiter}{0.0}{delimiter}{0.0}{delimiter}{1.0}\n")
+            file.write(f"{i}{delimiter}{B_field[0]}{delimiter}{B_field[1]}{delimiter}{B_field[2]}\n")
+    print("Node values created successfully")
 
-def create_pointdata(nodenumbers, filename, delimiter=' '):
+# Create the data for points inside the elements for checking the B-field interpolation
+def create_pointdata(nodenumbers, B_field, filename, delimiter=' '):
     # nodenumbers is the number of nodes in each dimension
 
     meshnodes = nodenumbers[0] * nodenumbers[1] * nodenumbers[2]
@@ -90,21 +94,27 @@ def create_pointdata(nodenumbers, filename, delimiter=' '):
 
                     elem = k + j * (nodenumbers[1] - 1) + i * (nodenumbers[1] - 1) * (nodenumbers[2] - 1)
 
-                    file.write(f"{meshnodes + n}{delimiter}{x}{delimiter}{y}{delimiter}{z}{delimiter}{elem}{delimiter}{0.0}{delimiter}{0.0}{delimiter}{1.0}\n")
+                    file.write(f"{meshnodes + n}{delimiter}{x}{delimiter}{y}{delimiter}{z}{delimiter}{elem}{delimiter}{B_field[0]}{delimiter}{B_field[1]}{delimiter}{B_field[2]}\n")
                     n += 1  # Increment the counter
+    print("Point data created successfully")
 
+# Read the mesh parameters from a file
 def read_mesh_parameters(filename):
-
     data = np.loadtxt(filename, delimiter=',', dtype=str)
     origin = [float(num) for num in (data[1][k] for k in range(1, 4))]
     num = [int(num) for num in (data[2][k] for k in range(1, 4))]
     domain_length = [float(num) for num in (data[3][k] for k in range(1, 4))]
+    B_field = [float(num) for num in (data[4][k] for k in range(1, 4))]
 
-    return origin, num, domain_length
+    print("B_field: ", B_field)
 
-origin, num, domain_length = read_mesh_parameters('input/meshdata.txt')
+    print("Mesh parameters read successfully")
+
+    return origin, num, domain_length, B_field
+
+origin, num, domain_length, B_field = read_mesh_parameters('input/meshdata.txt')
 
 create_nodedata(num, 'vtkInput/nodes.txt', origin = origin, domain_length = domain_length)
 create_meshdata(num, 'vtkInput/mesh.txt')
-create_nodevalues(num, 'vtkInput/data.txt')
-create_pointdata(num, 'testPoints/point_data.txt')
+create_nodevalues(num, B_field, 'vtkInput/data.txt')
+create_pointdata(num, B_field, 'Pointdata/point_data.txt')
