@@ -1,0 +1,5 @@
+value, x, y, z
+origin, 0.0, 0.0, 0.0
+num, 100, 100, 100
+domain_length, 2.0, 2.0, 2.0
+B_field, 0.0, 0.0, -0.14

@@ -9,6 +9,8 @@
 #include <vtkArrayCalculator.h>
 #include <vtkCellLocator.h>
 #include <vtkPointData.h>
+#include <vtkGeometryFilter.h>
+#include <vtkPolyDataNormals.h>
 
 #include "datatypes.h"
 
@@ -21,6 +23,13 @@ public:
     UnstructuredFieldContainer(const char* grid_filename, const char* B_field_name = "B_Field") : B_field_name_m(B_field_name) {
         // Read the grid from the file
         readGrid(grid_filename);
+        
+        // Print all the arrays in the elements
+        vtkSmartPointer<vtkCellData> cellData = grid->GetCellData();
+        for (int i = 0; i < cellData->GetNumberOfArrays(); ++i) {
+            vtkSmartPointer<vtkDataArray> dataArray = cellData->GetArray(i);
+            std::cout << "Array " << i << ": " << dataArray->GetName() << std::endl;
+        }
     }
 
     ~UnstructuredFieldContainer(){}
@@ -123,6 +132,7 @@ public:
         gradientFilter->SetComputeVorticity(true);   // Enable the curl computation
         gradientFilter->Update();
 
+
         // Add the curl field to the grid and rename it to the output_field_name
         grid->GetPointData()->AddArray(gradientFilter->GetUnstructuredGridOutput()->GetPointData()->GetArray("Vorticity"));
         grid->GetPointData()->GetArray("Vorticity")->SetName(output_field_name);
@@ -196,10 +206,6 @@ public:
         }
 
         if(R[2] < 0) {
-
-            //B_real[2] = -B_real[2];
-            //B_real = -B_real;
-
             B_real[0] = -B_real[0];
             B_real[1] = -B_real[1];
         }
@@ -271,6 +277,24 @@ public:
     void interpolateField(Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField)
     {
         FindCellAndInterpolateField(R, interpolatedField);
+    }
+
+    void getBoundaryInformation(vtkIdType cellID, std::string &boundaryType) {
+        vtkSmartPointer<vtkDataArray> boundaryArray = grid->GetCellData()->GetArray("Boundary_Type");
+        if (!boundaryArray) {
+            std::cerr << "Error: Boundary_Type array not found!" << std::endl;
+            boundaryType = "Unknown";
+            return;
+        }
+    
+        if (cellID < 0 || cellID >= boundaryArray->GetNumberOfTuples()) {
+            std::cerr << "Error: " << cellID << "is an invalid cellID!" << std::endl;
+            boundaryType = "Unknown";
+            return;
+        }
+    
+        double boundaryValue = boundaryArray->GetTuple1(cellID);
+        boundaryType = std::to_string(static_cast<int>(boundaryValue));
     }
 };
 
