@@ -9,6 +9,8 @@
 #include <vtkArrayCalculator.h>
 #include <vtkCellLocator.h>
 #include <vtkPointData.h>
+#include <vtkCellData.h>
+#include <vtkDataArray.h>
 
 #include <vector>
 
@@ -57,8 +59,6 @@ public:
         this->setParticleContainer( std::make_shared<UParticleContainer_t>( this->mesh_m, this->fl_m));
 
         initializeParticles(particles_filename);
-
-        dump();
         
         //this->dt_m     = 1. / 50. * 2. * pi * this->pcontainer_m->mass(0) / (this->pcontainer_m->Q(0) * Kokkos::sqrt(ippl::dot(this->pcontainer_m->B(0), this->pcontainer_m->B(0)).apply()));  // TODO: how to choose timestep?
         //this->dt_m    = 1e-10;
@@ -263,55 +263,55 @@ public:
         pc->R = pc->R + dt * pc->V;
         IpplTimings::stopTimer(RTimer);
 
+        // TODO: change this back after fixing the randomness issues
+
+        int id = 0;
+        while (pc->cellId(id) == -1) {
+            id++;
+        }
+        IpplTimings::startTimer(UpdateTimer);
+        pc->cellIdOld(id) = pc->cellId(id);
+        pc->cellId(id) = ufc->FindCellAndInterpolateField(pc->R(id), pc->B(id), "B_field");
+        IpplTimings::stopTimer(UpdateTimer);
+        
         Kokkos::parallel_for("ParticleUpdate", pc->getTotalNum(), KOKKOS_LAMBDA (const int i) {
             // Check if the particle position is inside the domain and interpolate the magnetic field at the new position
-            IpplTimings::startTimer(UpdateTimer);
+            if(i != id){
+                pc->B(i) = pc->B(id);
+                pc->cellIdOld(i) = pc->cellId(i);
+                pc->cellId(i) = ufc->GetGridCell(pc->R(i));
+            }
             if(pc->cellId(i) != -1){
-                pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i), "B_field");
-            }
-            IpplTimings::stopTimer(UpdateTimer);
+                /*
+                pc->B(i) = pc->B(id);
+                IpplTimings::startTimer(UpdateTimer);
+                pc->cellIdOld(i) = pc->cellId(i);
+                pc->cellId(i) = ufc->GetGridCell(pc->R(i));
+                IpplTimings::stopTimer(UpdateTimer);
+                */
 
-            IpplTimings::startTimer(PTimer);
-            // If the particle is outside the grid set velocity and change of velocity to zero
-            if(pc->cellId(i) == -1){
-                std::cout << "Error: Particle " << i << "is outside the grid!" << std::endl;
-                pc->V(i) = 0.0;
-                pc->dV(i) = 0.0;
-            }
-            else{
-                Vector_t<T, Dim> t = 0.5 * pc->Q(i) * pc->B(i) / pc->mass(i) * dt;
-                Vector_t<T, Dim> s = 2.0 * t / (1.0 + ippl::dot(t, t).apply());
-
-                Vector_t<T, Dim> v_prime = pc->V(i) + ippl::cross(pc->V(i), t);
-                pc->dV(i) = ippl::cross(v_prime, s);
+                IpplTimings::startTimer(PTimer);
+                // If the particle is outside the grid set velocity and change of velocity to zero
+                if(pc->cellId(i) == -1){
+                    dumpLostParticles(i);
+                    pc->V(i) = 0.0;
+                    pc->dV(i) = 0.0;
+                    // Adjust number of particles in simulation
+                    this->setTotalP(this->totalP_m - 1);
+                }
+    
+                else{
+                    Vector_t<T, Dim> t = 0.5 * pc->Q(i) * pc->B(i) / pc->mass(i) * dt;
+                    Vector_t<T, Dim> s = 2.0 * t / (1.0 + ippl::dot(t, t).apply());
+    
+                    Vector_t<T, Dim> v_prime = pc->V(i) + ippl::cross(pc->V(i), t);
+                    pc->dV(i) = ippl::cross(v_prime, s);
+                }
+                IpplTimings::stopTimer(PTimer);
             }
         });
-/*
-        for(unsigned i = 0; i < pc->getTotalNum(); ++i){
-            // Check if the particle position is inside the domain and interpolate the magnetic field at the new position
-            IpplTimings::startTimer(UpdateTimer);
-            if(pc->cellId(i) != -1){
-                pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i), "B_field");
-            }
-            IpplTimings::stopTimer(UpdateTimer);
 
-            IpplTimings::startTimer(PTimer);
-            // If the particle is outside the grid set velocity and change of velocity to zero
-            if(pc->cellId(i) == -1){
-                std::cout << "Error: Particle " << i << "is outside the grid!" << std::endl;
-                pc->V(i) = 0.0;
-                pc->dV(i) = 0.0;
-            }
-            else{
-                Vector_t<T, Dim> t = 0.5 * pc->Q(i) * pc->B(i) / pc->mass(i) * dt;
-                Vector_t<T, Dim> s = 2.0 * t / (1.0 + ippl::dot(t, t).apply());
-
-                Vector_t<T, Dim> v_prime = pc->V(i) + ippl::cross(pc->V(i), t);
-                pc->dV(i) = ippl::cross(v_prime, s);
-            }
-        }
-*/
-
+        IpplTimings::startTimer(PTimer);
         // kick (multiplication by dt not needed, already done in dV)
         pc->V = pc->V + pc->dV;
         IpplTimings::stopTimer(PTimer);
@@ -360,5 +360,25 @@ public:
         }
     }
 
+    void dumpLostParticles(int i) {
+        Inform m("dumpLostParticles");
+        if (ippl::Comm->rank() == 0) {
+            std::string boundaryType;
+            this->ufcontainer_m->getBoundaryInformation(this->pcontainer_m->cellIdOld(i), boundaryType);
+
+            std::stringstream fname;
+            fname << "data/LostParticles_";
+            fname << ippl::Comm->size();
+            fname << "_manager";
+            fname << ".csv";
+            Inform lostout(NULL, fname.str().c_str(), Inform::APPEND);
+            lostout.precision(16);
+            lostout.setf(std::ios::scientific, std::ios::floatfield);
+
+            lostout << "Particle " << i << " left the grid at time " << this->time_m << " at " << boundaryType << ", last cell number is " << this->pcontainer_m->cellIdOld(i) << "." << endl;
+
+            std::cout << "Particle " << i << " left the grid at " << boundaryType << ", last cell number is " << this->pcontainer_m->cellIdOld(i) << "." << std::endl;
+        }
+    }
 };
 #endif

@@ -68,8 +68,10 @@ public:
     virtual void dump() { /* default does nothing */ };
 
     void pre_step() override {
+        /*
         Inform m("Pre-step");
         m << "Done" << endl;
+        */
     }
 
     void post_step() override {
@@ -79,8 +81,10 @@ public:
         // write solution to output file
         this->dump();
 
-        Inform m("Post-step:");
-        m << "Finished time step: " << this->it_m << " time: " << this->time_m << endl;
+        if(this->it_m % 100 == 0){
+            Inform m("Post-step:");
+            m << "Finished time step: " << this->it_m << " time: " << this->time_m << endl;
+        }
     }
 
     /*
