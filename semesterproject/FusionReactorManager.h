@@ -153,7 +153,7 @@ public:
 
         // Find cellId of the particle and interpolate the magnetic field at the initial position
         for(unsigned i = 0; i < pc->getTotalNum(); ++i){
-            pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i), "B_field");
+            pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i));
             assert(pc->cellId(i) != -1);    // Check if the initial particle position is inside the domain
             m << "position particle " << i << " = " << pc->R(i) << endl;
         }
@@ -222,7 +222,7 @@ public:
         // Check if the particle position is inside the domain and interpolate the magnetic field at the new position
         IpplTimings::startTimer(UpdateTimer);
         for(unsigned i = 0; i < pc->getTotalNum(); ++i){
-            pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i), "B_field");
+            pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i));
         }
         IpplTimings::stopTimer(UpdateTimer);
 
@@ -282,13 +282,9 @@ public:
                 pc->cellId(i) = ufc->GetGridCell(pc->R(i));
             }
             if(pc->cellId(i) != -1){
-                /*
-                pc->B(i) = pc->B(id);
-                IpplTimings::startTimer(UpdateTimer);
-                pc->cellIdOld(i) = pc->cellId(i);
-                pc->cellId(i) = ufc->GetGridCell(pc->R(i));
-                IpplTimings::stopTimer(UpdateTimer);
-                */
+                pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i));
+            }
+            IpplTimings::stopTimer(UpdateTimer);
 
                 IpplTimings::startTimer(PTimer);
                 // If the particle is outside the grid set velocity and change of velocity to zero
