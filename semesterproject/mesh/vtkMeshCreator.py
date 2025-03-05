@@ -14,12 +14,12 @@ if version == 't':
     nodefile = 'testmesh/vtkInput/nodes.txt'
     elementfile = 'testmesh/vtkInput/mesh.txt'
     fieldfile = 'testmesh/vtkInput/data.txt'
-    resultfile = 'mesh.vtk'
+    resultfile = 'testmesh/mesh.vtk'
 elif version == 'rold':
     nodefile = 'reactormesh/vtkInput/OldMesh/Node22642_I8_3G20_Rev.txt'
     elementfile = 'reactormesh/vtkInput/OldMesh/Elem19482_8I6_I6_24X_I6.txt'
     fieldfile = 'reactormesh/vtkInput/OldMesh/B22642_XYZmod_I8_1X_4E12.txt'
-    resultfile = 'mesh.vtk'
+    resultfile = 'reactormesh/mesh.vtk'
 elif version == 'rnew':
     nodefile = 'reactormesh/vtkInput/NewMesh/Plasm18592N.txt'
     elementfile = 'reactormesh/vtkInput/NewMesh/PlasmE15641.txt'
@@ -36,7 +36,7 @@ elif version == 'rnew':
             # Create the converters dictionary
             converters = {i: int for i in range(num_columns)}
             boundary_files[filename] = np.loadtxt(filepath, converters=converters)
-    resultfile = 'mesh.vtk'
+    resultfile = 'reactormesh/mesh.vtk'
 
 
 # Create a mapping from original IDs to VTK IDs
