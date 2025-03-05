@@ -271,7 +271,7 @@ public:
         }
         IpplTimings::startTimer(UpdateTimer);
         pc->cellIdOld(id) = pc->cellId(id);
-        pc->cellId(id) = ufc->FindCellAndInterpolateField(pc->R(id), pc->B(id), "B_field");
+        pc->cellId(id) = ufc->FindCellAndInterpolateField(pc->R(id), pc->B(id));
         IpplTimings::stopTimer(UpdateTimer);
         
         Kokkos::parallel_for("ParticleUpdate", pc->getTotalNum(), KOKKOS_LAMBDA (const int i) {
@@ -304,8 +304,7 @@ public:
                     pc->dV(i) = ippl::cross(v_prime, s);
                 }
                 IpplTimings::stopTimer(PTimer);
-            }
-        });
+            });
 
         IpplTimings::startTimer(PTimer);
         // kick (multiplication by dt not needed, already done in dV)

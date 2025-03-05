@@ -9,6 +9,7 @@
 #include <vtkArrayCalculator.h>
 #include <vtkCellLocator.h>
 #include <vtkPointData.h>
+#include <vtkCellData.h>
 #include <vtkGeometryFilter.h>
 #include <vtkPolyDataNormals.h>
 
