@@ -234,10 +234,7 @@ public:
         return GetGridCell(R, weights);
     }
 
-    vtkIdType FindCellAndInterpolateField(Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField, const char* field_name = "B_Field") {
-        // Check that the field exists in the grid and is a vector field
-        assert(grid->GetPointData()->HasArray(field_name));
-        assert(grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents() == Dim);
+    vtkIdType FindCellAndInterpolateField(Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField) {
 
         // Set the interpolated field to zero
         Vector_t<double, Dim> B_field_ref = Vector_t<double, Dim>(0.0);
@@ -271,9 +268,9 @@ public:
         return cellId;
     }
 
-    void interpolateField(Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField, const char* field_name = "B_Field")
+    void interpolateField(Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField)
     {
-        FindCellAndInterpolateField(R, interpolatedField, field_name);
+        FindCellAndInterpolateField(R, interpolatedField);
     }
 };
 

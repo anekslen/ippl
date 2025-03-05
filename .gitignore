@@ -1,6 +1,4 @@
-build/
-build_new/
-build_parallel/
+build*/
 doc/html
 doc/latex
 manual/*.aux
