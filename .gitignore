@@ -12,8 +12,7 @@ manual/*.lot
 manual/ippl_user_guide.pdf
 *.vtk
 *.png
-*.csv
-semesterproject/inputfiles
 semesterproject/runs
+semesterproject/visualization
 *~
 *.~
