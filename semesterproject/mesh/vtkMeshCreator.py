@@ -1,11 +1,14 @@
 import numpy as np
 import vtk
+import os
 
 version = input("Test mesh? (t) or Reactor mesh old? (rold) or Reactor mesh new? (rnew): ")
 
 while(version != 't' and version != 'rold' and version != 'rnew'):
     print("Invalid input. Please enter 't' for the Test mesh or 'r' for the Reactor mesh.")
     version = input("Test mesh? (t) or Reactor mesh? (r): ")
+
+boundary_files = {}
 
 if version == 't':
     nodefile = 'testmesh/vtkInput/nodes.txt'
@@ -20,7 +23,19 @@ elif version == 'rold':
 elif version == 'rnew':
     nodefile = 'reactormesh/vtkInput/NewMesh/Plasm18592N.txt'
     elementfile = 'reactormesh/vtkInput/NewMesh/PlasmE15641.txt'
-    fieldfile = 'reactormesh/vtkInput/NewMesh/Plasma_B.txt'
+    fieldfile = 'reactormesh/vtkInput/NewMesh/Plasma_B.txt' 
+
+    boundary_folder = 'reactormesh/vtkInput/NewMesh/BoundaryClassification/'
+    for filename in os.listdir(boundary_folder):
+        if filename.endswith('.txt'):
+            filepath = os.path.join(boundary_folder, filename)
+            # Determine the number of columns in the file
+            with open(filepath, 'r') as f:
+                first_line = f.readline()
+                num_columns = len(first_line.split())
+            # Create the converters dictionary
+            converters = {i: int for i in range(num_columns)}
+            boundary_files[filename] = np.loadtxt(filepath, converters=converters)
     resultfile = 'mesh.vtk'
 
 
@@ -36,6 +51,16 @@ elements = np.loadtxt(elementfile, dtype=int)
 
 # Load the B field data
 b_field_data = np.loadtxt(fieldfile, dtype=float)
+
+boundary_data = {}
+boundary_sets = {}
+
+if version == 'rnew':
+    for key, value in boundary_files.items():
+        boundary_data[key] = np.loadtxt(os.path.join(boundary_folder, key), dtype=int)
+        boundary_sets[key] = set(tuple(row[:]) for row in boundary_data[key])
+
+    print("Files loades")
 
 # Create a VTK Points object to store the coordinates
 points = vtk.vtkPoints()
@@ -82,7 +107,20 @@ array = vtk.vtkFloatArray()
 array.SetName(f"Element_Number")
 cell_values.append(array)
 
+array = vtk.vtkIntArray()
+array.SetName(f"Boundary_Type")
+cell_values.append(array)
+
 element_id = 0
+
+num_boundary_types = len(boundary_sets)
+boundary_number = np.zeros(num_boundary_types + 1, dtype=int)
+counter = np.zeros(num_boundary_types + 1, dtype=int)
+
+for i, (key, value) in enumerate(boundary_sets.items()):
+    boundary_number[i+1] = len(value)
+
+boundary_number[0] = elements.shape[0] - sum(boundary_number[1:])
 
 # Iterate over elements and insert them into the unstructured grid
 for element in elements:
@@ -98,7 +136,6 @@ for element in elements:
         ugrid.InsertNextCell(wedge.GetCellType(), wedge.GetPointIds())
 
     else:  # If the element has 8 nodes (VTK_HEXAHEDRON)
-        type = 1
         hexahedron = vtk.vtkHexahedron()
         for i in range(8):
             hexahedron.GetPointIds().SetId(i, point_id_map[element[i]])
@@ -109,6 +146,16 @@ for element in elements:
         cell_values[i].InsertNextValue(element[i+8])  # Value1 to Value5
     cell_values[5].InsertNextValue(type)  # Element_Type
     cell_values[6].InsertNextValue(element[13]) #Element_Number
+
+    # Check if element is in any boundary set and insert the additional value
+    for i, (key, value) in enumerate(boundary_sets.items()):
+        if tuple(element[:]) in value:
+            cell_values[7].InsertNextValue(int(i+1))
+            counter[i+1] += 1
+            break
+    else:
+        cell_values[7].InsertNextValue(0)
+        counter[0] += 1
 
     element_id_map[element[13]] = element_id
     element_id += 1
@@ -124,3 +171,7 @@ writer.SetInputData(ugrid)
 writer.Write()
 
 print("Mesh written to 'mesh.vtk'")
+print(f"Number of elements in the boundary types: {counter}")
+print(f"Number of elements should boundary types: {boundary_number}")
+for(i, (key, value)) in enumerate(boundary_sets.items()):
+    print(f"Boundary type {i + 1} has name {key}")
