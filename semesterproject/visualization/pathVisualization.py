@@ -3,7 +3,7 @@ from collections import defaultdict
 import csv
 
 # Read data from CSV file
-csv_file = '/home/anna/semesterproject/anekslen_ippl/build_parallel/semesterproject/data/Particles_1_manager.csv'
+csv_file = '/home/annah/semesterproject/code/ippl/build/semesterproject/data/Particles_1_manager.csv'
 particles = defaultdict(list)
 
 with open(csv_file, 'r') as file:
@@ -55,7 +55,7 @@ for point_id, data in particles.items():
 
 # Write the multi-block dataset to a VTK file
 writer = vtk.vtkXMLMultiBlockDataWriter()
-writer.SetFileName('/home/anna/semesterproject/anekslen_ippl/build_parallel/semesterproject/data/particles.vtm')
+writer.SetFileName('/home/annah/semesterproject/code/ippl/build/semesterproject/data/particles.vtm')
 writer.SetInputData(multi_block)
 writer.Write()
 
