@@ -8,11 +8,10 @@
 #include "UParticleContainer.h"
 
 template <typename T, unsigned Dim, class pc = UParticleContainer<T, Dim>, class ufc = UnstructuredFieldContainer<T, Dim>>
-class UnstructuredGridManager : public ippl::BaseManager {
+class UnstructuredGridManager {
 public:
     UnstructuredGridManager(size_type totalP_, int nt_, std::string& stepMethod_, double dt_)
-        : ippl::BaseManager()
-        , totalP_m(totalP_)
+        : totalP_m(totalP_)
         , nt_m(nt_)
         , stepMethod_m(stepMethod_)
         , dt_m(dt_)
@@ -67,14 +66,16 @@ public:
 
     virtual void dump() { /* default does nothing */ };
 
-    void pre_step() override {
+    virtual void advance() = 0;
+
+    void pre_step() {
         /*
         Inform m("Pre-step");
         m << "Done" << endl;
         */
     }
 
-    void post_step() override {
+    void post_step() {
         // Update time
         this->time_m += this->dt_m;
         this->it_m++;
@@ -83,7 +84,17 @@ public:
 
         if(this->it_m % 100 == 0){
             Inform m("Post-step:");
-            m << "Finished time step: " << this->it_m << " time: " << this->time_m << endl;
+            m << "Finished time step: " << this->it_m << " time: " << this->time_m << ", particlenumber: " << this->pcontainer_m->getTotalNum() << endl;
+        }
+    }
+
+    void run(int nt) {
+        for (int it=0; it<nt && this->pcontainer_m->getTotalNum() > 0; it++){
+            this->pre_step();
+
+            this->advance();
+
+            this->post_step();
         }
     }
 

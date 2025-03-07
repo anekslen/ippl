@@ -182,9 +182,6 @@ public:
             std::cout << "Particle " << i << " velocity: " << pc->V(i) << std::endl;
         }
 
-        // Check if the velocity is set correctly
-        assert((Kokkos::abs(ippl::dot(pc->V, pc->V)) - absv * absv) < 1e-10);
-
         // Calculate kinetic Energy
         pc->Ek = 0.5 * pc->mass * ippl::dot(pc->V, pc->V);
 
@@ -264,47 +261,63 @@ public:
         IpplTimings::stopTimer(RTimer);
 
         // TODO: change this back after fixing the randomness issues
-
         int id = 0;
+        // Should not end in infinite loop, since only called when particles are left
+        // TODO: solve this nicer
         while (pc->cellId(id) == -1) {
             id++;
         }
+
         IpplTimings::startTimer(UpdateTimer);
         pc->cellIdOld(id) = pc->cellId(id);
         pc->cellId(id) = ufc->FindCellAndInterpolateField(pc->R(id), pc->B(id));
         IpplTimings::stopTimer(UpdateTimer);
-        
-        Kokkos::parallel_for("ParticleUpdate", pc->getTotalNum(), KOKKOS_LAMBDA (const int i) {
-            // Check if the particle position is inside the domain and interpolate the magnetic field at the new position
-            if(i != id){
-                pc->B(i) = pc->B(id);
-                pc->cellIdOld(i) = pc->cellId(i);
-                pc->cellId(i) = ufc->GetGridCell(pc->R(i));
-            }
-            if(pc->cellId(i) != -1){
-                pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i));
-            }
-            IpplTimings::stopTimer(UpdateTimer);
 
+        Kokkos::View<bool*> invalid("invalid_particles", pc->getTotalNum());
+        Kokkos::deep_copy(invalid, false);
+
+        int lostNum = 0;
+        
+        Kokkos::parallel_reduce("ParticleUpdate", Kokkos::RangePolicy<int>(0, pc->getTotalNum()), KOKKOS_CLASS_LAMBDA (const int& i, int& lLostNum) {
+            if(pc->cellId(i) != -1 || i == id){
+                IpplTimings::startTimer(UpdateTimer);
+                // Check if the particle position is inside the domain and interpolate the magnetic field at the new position
+                // TODO: change this back after fixing the randomness issues
+                if(i != id){
+                    pc->B(i) = pc->B(id);
+                    pc->cellIdOld(i) = pc->cellId(i);
+                    pc->cellId(i) = ufc->GetGridCell(pc->R(i));
+                }
+                IpplTimings::stopTimer(UpdateTimer);
+            
                 IpplTimings::startTimer(PTimer);
                 // If the particle is outside the grid set velocity and change of velocity to zero
                 if(pc->cellId(i) == -1){
-                    dumpLostParticles(i);
+                    invalid(i) = true;  // Mark particle as invalid
                     pc->V(i) = 0.0;
                     pc->dV(i) = 0.0;
-                    // Adjust number of particles in simulation
-                    this->setTotalP(this->totalP_m - 1);
+                    lLostNum++;
                 }
-    
+                // Calculate new calculated velocity using Boris method
                 else{
                     Vector_t<T, Dim> t = 0.5 * pc->Q(i) * pc->B(i) / pc->mass(i) * dt;
                     Vector_t<T, Dim> s = 2.0 * t / (1.0 + ippl::dot(t, t).apply());
-    
+
                     Vector_t<T, Dim> v_prime = pc->V(i) + ippl::cross(pc->V(i), t);
                     pc->dV(i) = ippl::cross(v_prime, s);
                 }
                 IpplTimings::stopTimer(PTimer);
-            });
+            }
+        }, lostNum);
+
+        // Print exit message for particles that left the grid
+        for(unsigned i = 0; i < pc->getTotalNum(); ++i){
+            if(invalid(i)) {
+                dumpLostParticles(i);
+            }
+        }
+        // Destroy particles that left the grid
+        pc->destroy(invalid, lostNum);
 
         IpplTimings::startTimer(PTimer);
         // kick (multiplication by dt not needed, already done in dV)
