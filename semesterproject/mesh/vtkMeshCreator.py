@@ -15,11 +15,14 @@ if version == 't':
     elementfile = 'testmesh/vtkInput/mesh.txt'
     fieldfile = 'testmesh/vtkInput/data.txt'
     resultfile = 'testmesh/mesh.vtk'
+    mapingfile = 'testmesh/ElementMapping.txt'
 elif version == 'rold':
     nodefile = 'reactormesh/vtkInput/OldMesh/Node22642_I8_3G20_Rev.txt'
     elementfile = 'reactormesh/vtkInput/OldMesh/Elem19482_8I6_I6_24X_I6.txt'
     fieldfile = 'reactormesh/vtkInput/OldMesh/B22642_XYZmod_I8_1X_4E12.txt'
     resultfile = 'reactormesh/mesh.vtk'
+    mapingfile = 'reactormesh/ElementMapping.txt'
+
 elif version == 'rnew':
     nodefile = 'reactormesh/vtkInput/NewMesh/Plasm18592N.txt'
     elementfile = 'reactormesh/vtkInput/NewMesh/PlasmE15641.txt'
@@ -37,6 +40,7 @@ elif version == 'rnew':
             converters = {i: int for i in range(num_columns)}
             boundary_files[filename] = np.loadtxt(filepath, converters=converters)
     resultfile = 'reactormesh/mesh.vtk'
+    mapingfile = 'reactormesh/ElementMapping.txt'
 
 
 # Create a mapping from original IDs to VTK IDs
@@ -175,3 +179,9 @@ print(f"Number of elements in the boundary types: {counter}")
 print(f"Number of elements should boundary types: {boundary_number}")
 for(i, (key, value)) in enumerate(boundary_sets.items()):
     print(f"Boundary type {i + 1} has name {key}")
+
+# Create file that matches vtk node numbers to input file node number
+with open(mapingfile, 'w') as f:
+    for key in element_id_map:
+        f.write(f"{key}, {element_id_map[key]}\n")
+    f.close()
