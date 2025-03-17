@@ -1,8 +1,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import sys
 
 # Load the CSV files
-particle_path = '/home/anna/semesterproject/anekslen_ippl/build_parallel/semesterproject/data/Particles_1_manager.csv'  # Replace with the correct path if needed
+particle_path = sys.argv[1] if len(sys.argv) > 1 else '/home/annah/semesterproject/code/ippl/build/semesterproject/data/Particles_1_manager.csv'
 
 particles_df = pd.read_csv(particle_path)
 

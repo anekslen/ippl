@@ -1,9 +1,11 @@
 import vtk
 from collections import defaultdict
 import csv
+import sys
+import os
 
 # Read data from CSV file
-csv_file = '/home/annah/semesterproject/code/ippl/build/semesterproject/data/Particles_1_manager.csv'
+csv_file = sys.argv[1] if len(sys.argv) > 1 else '/home/annah/semesterproject/code/ippl/build/semesterproject/data/Particles_1_manager.csv'
 particles = defaultdict(list)
 
 with open(csv_file, 'r') as file:
@@ -55,7 +57,8 @@ for point_id, data in particles.items():
 
 # Write the multi-block dataset to a VTK file
 writer = vtk.vtkXMLMultiBlockDataWriter()
-writer.SetFileName('/home/annah/semesterproject/code/ippl/build/semesterproject/data/particles.vtm')
+output_file = os.path.join(os.path.dirname(csv_file), 'particles.vtm')
+writer.SetFileName(output_file)
 writer.SetInputData(multi_block)
 writer.Write()
 
