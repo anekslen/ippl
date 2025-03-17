@@ -10,14 +10,16 @@ class UParticleContainer : public ippl::ParticleBase<ippl::ParticleSpatialLayout
 
 public:
     // Declare instances of the attribute containers
-    ippl::ParticleAttrib<double> Q;                         // Charge container
-    ippl::ParticleAttrib<double> mass;                      // Mass container
-    ippl::ParticleAttrib<double> Ek;                        // Energy container
-    typename Base::particle_position_type V;                // Velocity container
-    typename Base::particle_position_type dV;               // Change of velocity container
-    typename Base::particle_position_type B;                // Magnetic field container
-    ippl::ParticleAttrib<int> cellId;                       // Cell ID container
-    ippl::ParticleAttrib<int> cellIdOld;                    // Old cell ID container
+    ippl::ParticleAttrib<double> Q;                                         // Charge container
+    ippl::ParticleAttrib<double> mass;                                      // Mass container
+    ippl::ParticleAttrib<double> Ek;                                        // Energy container
+    typename Base::particle_position_type V;                                // Velocity container
+    typename Base::particle_position_type dV;                               // Change of velocity container
+    typename Base::particle_position_type B;                                // Magnetic field container
+    ippl::ParticleAttrib<int> cellId;                                       // Cell ID container
+    ippl::ParticleAttrib<int> cellIdOld;                                    // Old cell ID container
+    ippl::ParticleAttrib<int> Id;                                           // Particle ID container
+    ParticleAttrib<Vector_t<double, 8>> weights;     // Weights container to plot weights
 private:
     PLayout_t<T, Dim> pl_m;
 public:
@@ -45,6 +47,8 @@ public:
         this->addAttribute(B);          // Magnetic field attribute in T
         this->addAttribute(cellId);     // Cell ID attribute
         this->addAttribute(cellIdOld);  // Old cell ID attribute
+        this->addAttribute(Id);         // Particle ID attribute
+        this->addAttribute(weights);    // Weights attribute
 	}
 	void setupBCs() { setBCAllNo(); }
 

@@ -69,18 +69,14 @@ public:
     virtual void advance() = 0;
 
     void pre_step() {
-        /*
-        Inform m("Pre-step");
-        m << "Done" << endl;
-        */
+        // write solution to output file
+        this->dump();
     }
 
     void post_step() {
         // Update time
         this->time_m += this->dt_m;
         this->it_m++;
-        // write solution to output file
-        this->dump();
 
         if(this->it_m % 100 == 0){
             Inform m("Post-step:");

@@ -12,6 +12,8 @@
 #include <vtkCellData.h>
 #include <vtkGeometryFilter.h>
 #include <vtkPolyDataNormals.h>
+#include <vtkAbstractArray.h>
+#include <vtkStringArray.h>
 
 #include "datatypes.h"
 
@@ -28,9 +30,31 @@ public:
         // Print all the arrays in the elements
         vtkSmartPointer<vtkCellData> cellData = grid->GetCellData();
         for (int i = 0; i < cellData->GetNumberOfArrays(); ++i) {
-            vtkSmartPointer<vtkDataArray> dataArray = cellData->GetArray(i);
-            std::cout << "Array " << i << ": " << dataArray->GetName() << std::endl;
+            std::cout << "Array " << i << ": " << cellData->GetArrayName(i) << std::endl;
         }
+
+        // Create and build a cell locator
+        locator = vtkSmartPointer<vtkCellLocator>::New();
+        locator->SetDataSet(grid);
+        locator->BuildLocator();
+
+        // Call grid->FindCell to make it thread safe (it is not thread safe if called for the first time in a parallel region)
+        double point[3] = {0.1, 0.1, 0.1};
+        vtkSmartPointer<vtkGenericCell> GenCell = vtkSmartPointer<vtkGenericCell>::New();
+        vtkIdType cellId = 0;
+        double tol2 = 1e-6;
+        int subId;
+        double pcoords[3];
+        double weights[8];
+        grid->FindCell(point, nullptr, GenCell, cellId, tol2, subId, pcoords, weights);
+
+        // Call cell->GetCell() to make it thread safe (it is not thread safe if called for the first time in a parallel region)
+        grid->GetCell(cellId, GenCell);
+
+        // Call grid->GetPointCells() to make it thread safe (it is not thread safe if called for the first time in a parallel region)
+        vtkIdType pointId = 0;
+        vtkSmartPointer<vtkIdList> cellList = vtkSmartPointer<vtkIdList>::New();
+        grid->GetPointCells(pointId, cellList);
     }
 
     ~UnstructuredFieldContainer(){}
@@ -38,6 +62,7 @@ public:
 private:
     const char* B_field_name_m;
     vtkSmartPointer<vtkUnstructuredGrid> grid;
+    vtkSmartPointer<vtkCellLocator> locator;
 
     void readGrid(const char* grid_filename) {
         // Create a reader .vtk file
@@ -182,7 +207,6 @@ public:
         }
         
         return R_ref;
-
     }
 
     Vector_t<double, Dim> getRealB_field(Vector_t<double, Dim> B, Vector_t<double, Dim> R) {
@@ -214,54 +238,123 @@ public:
         return B_real;
     }
 
-
     // Return the Id of the grid cell in which a point is located
-    int GetGridCell(Vector_t<double, Dim> R, double (&weights)[8]) {
-        // Get reference position
+    vtkIdType GetCellId(const Vector_t<double, Dim> R, double (&weights)[8]) {
+        // Get reference position TODO: change this back for test grid
         Vector_t<double, Dim> R_ref = getReferencePosition(R);
-
-        // Create and build a cell locator
-        vtkSmartPointer<vtkCellLocator> locator = vtkSmartPointer<vtkCellLocator>::New();
-        locator->SetDataSet(grid);
-        locator->BuildLocator();
+        // Vector_t<double, Dim> R_ref = R;
 
         // Find the cell that contains the point (x, y, z)
         double point[Dim] = { R_ref[0], R_ref[1], R_ref[2] };
-        double tol2 = 0.0;
+        double tol2 = 1e-6;
         vtkSmartPointer<vtkGenericCell> GenCell = vtkSmartPointer<vtkGenericCell>::New();
         double pcoords[Dim];
 
-        double cellId = locator->FindCell(point, tol2, GenCell, pcoords, weights);
+        vtkIdType cellId = this->locator->FindCell(point, tol2, GenCell, pcoords, weights);
         
         return cellId;
     }
 
-    int GetGridCell(Vector_t<double, Dim> R) {
+    vtkIdType GetCellId(Vector_t<double, Dim> R) {        
+        // Find the cell that contains the point (x, y, z)
         double weights[8];
-        return GetGridCell(R, weights);
+        return GetCellId(R, weights);
     }
 
-    vtkIdType FindCellAndInterpolateField(Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField) {
+    vtkIdType CheckNeighboringCells(const Vector_t<double, Dim> R, double (&weights)[8], vtkIdType wrongId) {
+        // Get reference position TODO: change this back for test grid
+        Vector_t<double, Dim> R_ref = getReferencePosition(R);
+        // Vector_t<double, Dim> R_ref = R;
+
+        // Get the cell that does not contain the point, but was found by the locator
+        vtkSmartPointer<vtkGenericCell> cell = vtkSmartPointer<vtkGenericCell>::New();
+        grid->GetCell(wrongId, cell);
+
+        // Get the points of the cell
+        vtkSmartPointer<vtkIdList> pointIds = cell->GetPointIds();
+
+        // Over all points of the cell find cells that contain the point and check if point is inside the cell with correct interpolation weights
+        for (int i = 0; i < pointIds->GetNumberOfIds(); i++) {
+            // Get cells containing the point
+            vtkSmartPointer<vtkIdList> cellList = vtkSmartPointer<vtkIdList>::New();
+            grid->GetPointCells(pointIds->GetId(i), cellList);
+
+            for(int j = 0; j < cellList->GetNumberOfIds(); j++) {
+                // Get the cell that contains the point
+                vtkSmartPointer<vtkGenericCell> GenCell = vtkSmartPointer<vtkGenericCell>::New();
+                vtkIdType cellId = cellList->GetId(j);
+                grid->GetCell(cellId, GenCell);
+
+                // Check if the point is inside the cell
+                double point[3] = { R_ref[0], R_ref[1], R_ref[2] };
+                double closestPoint[3];
+                int subId;
+                double pcoords[Dim];
+                double dist2;
+                double w[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+                int insideTest = GenCell->EvaluatePosition(point, closestPoint, subId, pcoords, dist2, w);
+
+                if(insideTest == 1 && cellId != wrongId) {
+                    double weightSum = 0;
+                    for (int k = 0; k < cell->GetNumberOfPoints(); k++) {
+                        weightSum += w[k];
+                    }
+                    if(std::fabs(weightSum - 1) < 1e-6) {
+                        for (int k = 0; k < 8; k++) {
+                            weights[k] = w[k];
+                        }
+                        return cellId;
+                    }
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    vtkIdType FindCellAndInterpolateField(Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField, Vector_t<double, 8> &w) {
 
         // Set the interpolated field to zero
         Vector_t<double, Dim> B_field_ref = Vector_t<double, Dim>(0.0);
+        // TODO: change this back after not plotting the weights
+        w = Vector_t<double, 8>(0.0);
 
         // Get gridcell and interpolation weights
-        double weights[8];
-        vtkIdType cellId = GetGridCell(R, weights);
+        double weights[8] = {0.0};
+        vtkIdType cellId = GetCellId(R, weights);
+        
         // Check that the point is inside the grid
         if(cellId == -1) {
             return cellId;
         }
 
-        // Get the cell that contains the point
-        vtkSmartPointer<vtkCell> cell = grid->GetCell(cellId);
+        // get the cell that contains the point
+        vtkSmartPointer<vtkGenericCell> cell = vtkSmartPointer<vtkGenericCell>::New();
+        grid->GetCell(cellId, cell);
+
+        // Check if the interpolation weights are normalized
+        double weightSum = 0.0;
+        bool positiveWeights = true;
+
+        for(unsigned i = 0; i < cell->GetNumberOfPoints(); i++) {
+            weightSum += weights[i];
+            if(weights[i] < -1e-10) {
+                positiveWeights = false;
+            }
+        }
+
+        if(std::fabs(weightSum - 1) > 1e-6 || !positiveWeights) {
+            return -3;   
+        }
 
         // Access the field
         vtkSmartPointer<vtkDataArray> fieldArray = grid->GetPointData()->GetArray(B_field_name_m);
-
-        double B_val[Dim];        
+        
+        double B_val[Dim];     
         for(unsigned i = 0; i < cell->GetNumberOfPoints(); i++) {
+            // TODO: change this back after not plotting the weights
+            w[i] = weights[i];
+            
             vtkIdType pointId = cell->GetPointId(i);
             fieldArray->GetTuple(pointId, B_val);
             for(unsigned j = 0; j < Dim; j++) {
@@ -281,7 +374,7 @@ public:
     }
 
     void getBoundaryInformation(vtkIdType cellID, std::string &boundaryType) {
-        vtkSmartPointer<vtkDataArray> boundaryArray = grid->GetCellData()->GetArray("Boundary_Type");
+        vtkSmartPointer<vtkStringArray> boundaryArray = vtkStringArray::SafeDownCast(grid->GetCellData()->GetAbstractArray("Boundary_Type"));
         if (!boundaryArray) {
             std::cerr << "Error: Boundary_Type array not found!" << std::endl;
             boundaryType = "Unknown";
@@ -294,8 +387,7 @@ public:
             return;
         }
     
-        double boundaryValue = boundaryArray->GetTuple1(cellID);
-        boundaryType = std::to_string(static_cast<int>(boundaryValue));
+        boundaryType = boundaryArray->GetValue(cellID);
     }
 };
 

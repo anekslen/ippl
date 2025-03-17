@@ -74,8 +74,6 @@ public:
         pc->dV = pc->Q / pc->mass * ippl::cross(pc->V, pc->B);
         pc->V = pc->V + 0.5 * this->dt_m * pc->dV;
 
-        dump();
-
         ufc->calculateCurl("B_Field", "Vorticity");
         ufc->calculateMagnitude("Vorticity", "VorticityMagnitude");
         ufc->writeField("data/curl.csv", "Vorticity", true, "VorticityMagnitude");
@@ -143,6 +141,7 @@ public:
                 VelSplit[i] = std::stod(value);
             }
             pc->V(numP) = VelSplit;
+            pc->Id(numP) = numP;
             
             ++numP;
         }
@@ -153,7 +152,7 @@ public:
 
         // Find cellId of the particle and interpolate the magnetic field at the initial position
         for(unsigned i = 0; i < pc->getTotalNum(); ++i){
-            pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i));
+            pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i), pc->weights(i));
             assert(pc->cellId(i) != -1);    // Check if the initial particle position is inside the domain
             m << "position particle " << i << " = " << pc->R(i) << endl;
         }
@@ -219,7 +218,7 @@ public:
         // Check if the particle position is inside the domain and interpolate the magnetic field at the new position
         IpplTimings::startTimer(UpdateTimer);
         for(unsigned i = 0; i < pc->getTotalNum(); ++i){
-            pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i));
+            pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i), pc->weights(i));
         }
         IpplTimings::stopTimer(UpdateTimer);
 
@@ -228,7 +227,7 @@ public:
         // Calculate new change of velocity
         for(unsigned i = 0; i < pc->getTotalNum(); ++i){
             // If the particle is outside the grid set velocity and change of velocity to zero
-            if(pc->cellId(i) == -1){
+            if(pc->cellId(i) == -1 || pc->cellId(i) == -2 || pc->cellId(i) == -3){
                 pc->V(i) = 0.0;
                 pc->dV(i) = 0.0;
             }
@@ -246,7 +245,6 @@ public:
     }
 
     void BorisStep(){
-        // LeapFrog time stepping https://en.wikipedia.org/wiki/Leapfrog_integration
         static IpplTimings::TimerRef PTimer           = IpplTimings::getTimer("pushVelocity");
         static IpplTimings::TimerRef RTimer           = IpplTimings::getTimer("pushPosition");
         static IpplTimings::TimerRef UpdateTimer      = IpplTimings::getTimer("updatingParticles");
@@ -260,39 +258,21 @@ public:
         pc->R = pc->R + dt * pc->V;
         IpplTimings::stopTimer(RTimer);
 
-        // TODO: change this back after fixing the randomness issues
-        int id = 0;
-        // Should not end in infinite loop, since only called when particles are left
-        // TODO: solve this nicer
-        while (pc->cellId(id) == -1) {
-            id++;
-        }
-
-        IpplTimings::startTimer(UpdateTimer);
-        pc->cellIdOld(id) = pc->cellId(id);
-        pc->cellId(id) = ufc->FindCellAndInterpolateField(pc->R(id), pc->B(id));
-        IpplTimings::stopTimer(UpdateTimer);
+        int lostNum = 0;
 
         Kokkos::View<bool*> invalid("invalid_particles", pc->getTotalNum());
         Kokkos::deep_copy(invalid, false);
-
-        int lostNum = 0;
         
         Kokkos::parallel_reduce("ParticleUpdate", Kokkos::RangePolicy<int>(0, pc->getTotalNum()), KOKKOS_CLASS_LAMBDA (const int& i, int& lLostNum) {
-            if(pc->cellId(i) != -1 || i == id){
                 IpplTimings::startTimer(UpdateTimer);
                 // Check if the particle position is inside the domain and interpolate the magnetic field at the new position
-                // TODO: change this back after fixing the randomness issues
-                if(i != id){
-                    pc->B(i) = pc->B(id);
-                    pc->cellIdOld(i) = pc->cellId(i);
-                    pc->cellId(i) = ufc->GetGridCell(pc->R(i));
-                }
+                pc->cellIdOld(i) = pc->cellId(i);
+                pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i), pc->weights(i));
                 IpplTimings::stopTimer(UpdateTimer);
             
                 IpplTimings::startTimer(PTimer);
                 // If the particle is outside the grid set velocity and change of velocity to zero
-                if(pc->cellId(i) == -1){
+                if(pc->cellId(i) == -1 || pc->cellId(i) == -2 || pc->cellId(i) == -3){
                     invalid(i) = true;  // Mark particle as invalid
                     pc->V(i) = 0.0;
                     pc->dV(i) = 0.0;
@@ -307,7 +287,6 @@ public:
                     pc->dV(i) = ippl::cross(v_prime, s);
                 }
                 IpplTimings::stopTimer(PTimer);
-            }
         }, lostNum);
 
         // Print exit message for particles that left the grid
@@ -316,6 +295,12 @@ public:
                 dumpLostParticles(i);
             }
         }
+
+        // In case all particle get destroyed, dump data to have final state
+        if(pc->getTotalNum() - lostNum == 0) {
+            dump();
+        }
+
         // Destroy particles that left the grid
         pc->destroy(invalid, lostNum);
 
@@ -348,14 +333,14 @@ public:
             csvout.precision(16);
             csvout.setf(std::ios::scientific, std::ios::floatfield);
             if ( std::fabs(this->time_m) < 1e-14 ) {
-                csvout << "Time,Particle_id,Position_x,Position_y,Position_z,Cell_id,Velocity_x,Velocity_y,Velocity_z,E_kin,B_x,B_y,B_z,Mag_B,RotB_x,RotB_y,RotB_z,Mag_RotB" << endl;
+                csvout << "Time,Particle_id,Position_x,Position_y,Position_z,Cell_id,Velocity_x,Velocity_y,Velocity_z,E_kin,B_x,B_y,B_z,Mag_B,RotB_x,RotB_y,RotB_z,Mag_RotB,W0,W1,W2,W3,W4,W5,W6,W7" << endl;
             }
             for(unsigned i = 0; i < this->pcontainer_m->getTotalNum(); ++i){
                 Vector_t<T, Dim> CrossB = Vector_t<T, Dim>{(this->pcontainer_m->B(i)[2] - this->pcontainer_m->B(i)[1])
                                             , (this->pcontainer_m->B(i)[0] - this->pcontainer_m->B(i)[2])
                                             , (this->pcontainer_m->B(i)[1] - this->pcontainer_m->B(i)[0])};
 
-                csvout << this->time_m << "," << i << ","
+                csvout << this->time_m << "," << this->pcontainer_m->Id(i) << ","
                 << this->pcontainer_m->R(i)[0] << "," << this->pcontainer_m->R(i)[1] << "," << this->pcontainer_m->R(i)[2] << ","
                 << this->pcontainer_m->cellId(i) << ","
                 << this->pcontainer_m->V(i)[0] << "," << this->pcontainer_m->V(i)[1] << "," << this->pcontainer_m->V(i)[2] << ","
@@ -363,17 +348,17 @@ public:
                 << this->pcontainer_m->B(i)[0] << "," << this->pcontainer_m->B(i)[1] << "," << this->pcontainer_m->B(i)[2] << ","
                 << std::sqrt(ippl::dot(this->pcontainer_m->B(i), this->pcontainer_m->B(i)).apply()) << ","
                 << CrossB[0] << "," << CrossB[1] << "," << CrossB[2] << ","
-                << std::sqrt(ippl::dot(CrossB, CrossB).apply()) << endl;
+                << std::sqrt(ippl::dot(CrossB, CrossB).apply()) << ","
+                << this->pcontainer_m->weights(i)[0] << "," << this->pcontainer_m->weights(i)[1] << "," << this->pcontainer_m->weights(i)[2] << "," << this->pcontainer_m->weights(i)[3] << ","
+                << this->pcontainer_m->weights(i)[4] << "," << this->pcontainer_m->weights(i)[5] << "," << this->pcontainer_m->weights(i)[6] << "," << this->pcontainer_m->weights(i)[7] << endl;
             }
+
         }
     }
 
     void dumpLostParticles(int i) {
         Inform m("dumpLostParticles");
         if (ippl::Comm->rank() == 0) {
-            std::string boundaryType;
-            this->ufcontainer_m->getBoundaryInformation(this->pcontainer_m->cellIdOld(i), boundaryType);
-
             std::stringstream fname;
             fname << "data/LostParticles_";
             fname << ippl::Comm->size();
@@ -383,9 +368,69 @@ public:
             lostout.precision(16);
             lostout.setf(std::ios::scientific, std::ios::floatfield);
 
-            lostout << "Particle " << i << " left the grid at time " << this->time_m << " at " << boundaryType << ", last cell number is " << this->pcontainer_m->cellIdOld(i) << "." << endl;
+            int id = this->pcontainer_m->Id(i);
+            
+            std::string boundaryType;
+            this->ufcontainer_m->getBoundaryInformation(this->pcontainer_m->cellIdOld(i), boundaryType);
 
-            std::cout << "Particle " << i << " left the grid at " << boundaryType << ", last cell number is " << this->pcontainer_m->cellIdOld(i) << "." << std::endl;
+            lostout << this->time_m << "," << this->pcontainer_m->Id(i) << "," << this->pcontainer_m->cellIdOld(i) << "," << boundaryType << endl;
+
+            std::cout << "Particle " << id << " left the grid at time " << this->time_m << " at boundary region " << boundaryType << ", last cell number is " << this->pcontainer_m->cellIdOld(i) << "." << std::endl;
+
+            if(this->pcontainer_m->cellId(i) == -1) {
+                std::stringstream efname;
+                efname << "data/ExitedParticles_";
+                efname << ippl::Comm->size();
+                efname << "_manager";
+                efname << ".csv";
+                Inform exitOut(NULL, efname.str().c_str(), Inform::APPEND);
+                exitOut.precision(16);
+                exitOut.setf(std::ios::scientific, std::ios::floatfield);
+
+                exitOut << "Particle " << id << " left the grid at time " << this->time_m << ", last cell was " << this->pcontainer_m->cellIdOld(i) << "." << endl;
+            }
+
+            if(this->pcontainer_m->cellId(i) == -2) {
+                std::stringstream mfname;
+                mfname << "data/MissedCells_";
+                mfname << ippl::Comm->size();
+                mfname << "_manager";
+                mfname << ".csv";
+                Inform missOut(NULL, mfname.str().c_str(), Inform::APPEND);
+                missOut.precision(16);
+                missOut.setf(std::ios::scientific, std::ios::floatfield);
+
+                missOut << "Wrong cell found, particle " << id << " left the grid at time " << this->time_m << ", last cell was " << this->pcontainer_m->cellIdOld(i) << "." << endl;
+            }
+
+            if(this->pcontainer_m->cellId(i) == -3) {
+                std::stringstream wfname;
+                wfname << "data/MissedWeights_";
+                wfname << ippl::Comm->size();
+                wfname << "_manager";
+                wfname << ".csv";
+                Inform weightsOut(NULL, wfname.str().c_str(), Inform::APPEND);
+                weightsOut.precision(16);
+                weightsOut.setf(std::ios::scientific, std::ios::floatfield);
+
+                double wSum = 0.0;
+                for(unsigned j = 0; j < 8; j++){
+                    wSum += this->pcontainer_m->weights(i)[j];
+                }
+
+                weightsOut << "Interpolation weights not normalised, particle " << id << " left the grid at time " << this->time_m << ", last cell was " << this->pcontainer_m->cellIdOld(i) << " and weightsum is " << wSum << "." << endl;
+                std::cout << "At time " << this->time_m << ", weights are not normalized." << std::endl;
+                
+                std::cout << this->time_m << "," << this->pcontainer_m->Id(i) << ","
+                << this->pcontainer_m->R(i)[0] << "," << this->pcontainer_m->R(i)[1] << "," << this->pcontainer_m->R(i)[2] << ","
+                << this->pcontainer_m->cellId(i) << ","
+                << this->pcontainer_m->V(i)[0] << "," << this->pcontainer_m->V(i)[1] << "," << this->pcontainer_m->V(i)[2] << ","
+                << this->pcontainer_m->Ek(i) << ","
+                << this->pcontainer_m->B(i)[0] << "," << this->pcontainer_m->B(i)[1] << "," << this->pcontainer_m->B(i)[2] << ","
+                << std::sqrt(ippl::dot(this->pcontainer_m->B(i), this->pcontainer_m->B(i)).apply()) << ","
+                << this->pcontainer_m->weights(i)[0] << "," << this->pcontainer_m->weights(i)[1] << "," << this->pcontainer_m->weights(i)[2] << "," << this->pcontainer_m->weights(i)[3] << ","
+                << this->pcontainer_m->weights(i)[4] << "," << this->pcontainer_m->weights(i)[5] << "," << this->pcontainer_m->weights(i)[6] << "," << this->pcontainer_m->weights(i)[7] << endl;
+            }
         }
     }
 };
