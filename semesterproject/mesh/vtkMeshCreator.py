@@ -61,8 +61,9 @@ boundary_sets = {}
 
 if version == 'rnew':
     for key, value in boundary_files.items():
-        boundary_data[key] = np.loadtxt(os.path.join(boundary_folder, key), dtype=int)
-        boundary_sets[key] = set(tuple(row[:]) for row in boundary_data[key])
+        boundarytype = key.split('.')[0]
+        boundary_data[boundarytype] = np.loadtxt(os.path.join(boundary_folder, key), dtype=int)
+        boundary_sets[boundarytype] = set(tuple(row[:]) for row in boundary_data[boundarytype])
 
     print("Files loades")
 
@@ -111,7 +112,7 @@ array = vtk.vtkFloatArray()
 array.SetName(f"Element_Number")
 cell_values.append(array)
 
-array = vtk.vtkIntArray()
+array = vtk.vtkStringArray()
 array.SetName(f"Boundary_Type")
 cell_values.append(array)
 
@@ -152,21 +153,21 @@ for element in elements:
     cell_values[6].InsertNextValue(element[13]) #Element_Number
 
     # Check if element is in any boundary set and insert the additional value
-    for i, (key, value) in enumerate(boundary_sets.items()):
+    for i, (boundarytype, value) in enumerate(boundary_sets.items()):
         if tuple(element[:]) in value:
-            cell_values[7].InsertNextValue(int(i+1))
+            cell_values[7].InsertNextValue(boundarytype)
             counter[i+1] += 1
             break
     else:
-        cell_values[7].InsertNextValue(0)
+        cell_values[7].InsertNextValue("Interior")
         counter[0] += 1
 
     element_id_map[element[13]] = element_id
     element_id += 1
 
-    # Add the cell values array to the unstructured grid's cell data
-    for vals in cell_values:
-        ugrid.GetCellData().AddArray(vals)
+# Add the cell values array to the unstructured grid's cell data
+for vals in cell_values:
+    ugrid.GetCellData().AddArray(vals)
 
 # Write the grid to a VTK file
 writer = vtk.vtkUnstructuredGridWriter()
