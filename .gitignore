@@ -8,10 +8,9 @@ manual/*.idx
 manual/*.lof
 manual/*.lot
 manual/ippl_user_guide.pdf
-*.vtk
-*.png
-semesterproject/runs
-semesterproject/visualization/*
-!semesterpoject/visualization/*.py
+semesterproject/runs/
+semesterproject/*.csv
+semesterproject/*.vtk
+semesterproject/*.png
 *~
 *.~

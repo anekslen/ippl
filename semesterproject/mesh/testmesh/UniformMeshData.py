@@ -59,16 +59,24 @@ def create_meshdata(nodenumbers, filename, delimiter=' '):
     print("Mesh data created successfully")
 
 # Create random data for the nodes
-def create_nodevalues(nodenumbers, B_field, filename, delimiter=' '):
+def create_nodevalues(nodenumbers, B_field, filename, delimiter=' ', domain_length = [1, 1, 1], grad = [0.0, 0.0, 0.0]):
     # nodenumbers is the number of nodes in each dimension
+
+    h = [domain_length[i] / (nodenumbers[i] - 1) for i in range(3)]
 
     with open(filename, 'w') as file:
         # Write the header
         #file.write(f"node{delimiter}Bx{delimiter}By{delimiter}Bz\n")
-        
-        # Write the data lines
-        for i in range(nodenumbers[0] * nodenumbers[1] * nodenumbers[2]):
-            file.write(f"{i}{delimiter}{B_field[0]}{delimiter}{B_field[1]}{delimiter}{B_field[2]}\n")
+
+        for i in range(nodenumbers[0]):
+            for j in range(nodenumbers[1]):
+                for k in range(nodenumbers[2]):
+                    elem = i * nodenumbers[1] * nodenumbers[2] + j * nodenumbers[2] + k
+                    BLocX = B_field[0] + grad[0] * h[0] * i
+                    BLocY = B_field[1] + grad[1] * h[1] * j
+                    BLocZ = B_field[2] + grad[2] * h[2] * k
+                    file.write(f"{elem}{delimiter}{BLocX}{delimiter}{BLocY}{delimiter}{BLocZ}\n")
+
     print("Node values created successfully")
 
 # Create the data for points inside the elements for checking the B-field interpolation
@@ -105,16 +113,18 @@ def read_mesh_parameters(filename):
     num = [int(num) for num in (data[2][k] for k in range(1, 4))]
     domain_length = [float(num) for num in (data[3][k] for k in range(1, 4))]
     B_field = [float(num) for num in (data[4][k] for k in range(1, 4))]
+    grad = [float(num) for num in (data[5][k] for k in range(1, 4))]
+    
 
     print("B_field: ", B_field)
 
     print("Mesh parameters read successfully")
 
-    return origin, num, domain_length, B_field
+    return origin, num, domain_length, B_field, grad
 
-origin, num, domain_length, B_field = read_mesh_parameters('input/meshdata.txt')
+origin, num, domain_length, B_field, gradient = read_mesh_parameters('input/meshdata.txt')
 
 create_nodedata(num, 'vtkInput/nodes.txt', origin = origin, domain_length = domain_length)
 create_meshdata(num, 'vtkInput/mesh.txt')
-create_nodevalues(num, B_field, 'vtkInput/data.txt')
-create_pointdata(num, B_field, '../../inputfiles/testmesh/point_data.txt')
+create_nodevalues(num, B_field, 'vtkInput/data.txt', domain_length = domain_length, grad = gradient)
+create_pointdata(num, B_field, 'vtkInput/point_data.txt')
