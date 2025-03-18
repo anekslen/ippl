@@ -9,8 +9,8 @@ manual/*.lof
 manual/*.lot
 manual/ippl_user_guide.pdf
 semesterproject/runs/
-semesterproject/*.csv
-semesterproject/*.vtk
-semesterproject/*.png
+semesterproject/**/*.csv
+semesterproject/**/*.vtk
+semesterproject/**/*.png
 *~
 *.~
