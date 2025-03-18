@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 
         std::cout << "Grid bounds: Min = " << min[0] << ", " << min[1] << ", " << min[2] << ", Max = " << max[0] << ", " << max[1] << ", " << max[2] << std::endl;
 
-        // Test GetGridCell, interpolateField and FindCellAndInterpolateField functions with the points and information given in the file point_file
+        // Test GetCellId, interpolateField and FindCellAndInterpolateField functions with the points and information given in the file point_file
         int pointId;
         ippl::Vector<T, Dim> R;
         vtkIdType LocatedCell;
@@ -88,17 +88,19 @@ int main(int argc, char *argv[]) {
         std::cout << "Reading points from file" << std::endl;
 
         while (infile >> pointId >> R[0] >> R[1] >> R[2] >> LocatedCell >> GivenB_Field[0] >> GivenB_Field[1] >> GivenB_Field[2]) {
-            // Test GetGridCell
-            cellId = ufcontainer->GetGridCell(R);
+            // Test GetCellId
+            cellId = ufcontainer->GetCellId(R);
             if (cellId != LocatedCell) {
-                std::cerr << "Error GetGridCell: The cellId is not correct! Should be " << LocatedCell << " but is " << cellId << std::endl;
+                std::cerr << "Error GetCellId: The cellId is not correct! Should be " << LocatedCell << " but is " << cellId << std::endl;
                 exit(1);
             }
 
             std::cout << "CellId: " << cellId << std::endl;
 
             // Test FindCellAndInterpolateField
-            cellId = ufcontainer->FindCellAndInterpolateField(R, InterpolatedB_Field);
+
+            Vector_t<double, 8> w;
+            cellId = ufcontainer->FindCellAndInterpolateField(R, InterpolatedB_Field, w);
             if (cellId != LocatedCell) {
                 std::cerr << "Error FindCellAndInterpolateField: The cellId is not correct! Should be " << LocatedCell << " but is " << cellId << std::endl;
                 exit(1);
