@@ -267,7 +267,12 @@ endif ()
 
 option(ENABLE_VTK "Enable VTK" OFF)
 if (ENABLE_VTK)
-    find_package(VTK REQUIRED)
+    find_package(VTK COMPONENTS
+    CommonCore
+    CommonDataModel
+    FiltersGeneral
+    IOLegacy
+    REQUIRED)
     add_subdirectory (semesterproject)
 endif()
 
