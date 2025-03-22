@@ -344,7 +344,11 @@ public:
         }
 
         if(std::fabs(weightSum - 1) > 1e-6 || !positiveWeights) {
-            return -3;   
+            for(unsigned i = 0; i < cell->GetNumberOfPoints(); i++) {
+                // TODO: change this back after not plotting the weights
+                w[i] = weights[i];
+            }
+            return -3;
         }
 
         // Access the field
