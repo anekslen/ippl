@@ -1,0 +1,10 @@
+value
+R,0.318,0.332
+npointsR,100
+Theta,20,45
+npointsTheat,100
+z,0
+Ekin,100
+Vsplit,1,0,1
+Vsplit,2,0,1
+Vsplit,1,0,2

@@ -1,9 +1,0 @@
-value
-R,0.318,0.338
-npointsR,2
-Theta,-40,-20
-npointsTheat,2
-z,0
-Ekin,100
-Vsplit,1,0,1
-Vsplit,2,0,1
