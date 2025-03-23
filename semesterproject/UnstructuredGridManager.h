@@ -70,7 +70,7 @@ public:
 
     void pre_step() {
         // write solution to output file
-        this->dump();
+        // this->dump();
     }
 
     void post_step() {

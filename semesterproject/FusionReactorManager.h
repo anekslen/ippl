@@ -77,6 +77,55 @@ public:
         ufc->calculateCurl("B_Field", "Vorticity");
         ufc->calculateMagnitude("Vorticity", "VorticityMagnitude");
         ufc->writeField("data/curl.csv", "Vorticity", true, "VorticityMagnitude");
+
+        // Create header for the output files
+
+        // Print header for lost particles
+        std::stringstream fname;
+        fname << "data/LostParticles_";
+        fname << ippl::Comm->size();
+        fname << "_manager";
+        fname << ".csv";
+        Inform lostout(NULL, fname.str().c_str(), Inform::APPEND);
+        lostout.precision(16);
+        lostout.setf(std::ios::scientific, std::ios::floatfield);
+        lostout << "Time,Particle_id,Cell_id,Boundary_type" << endl;
+
+        // Print header for exited particles
+        std::stringstream efname;
+        efname << "data/ExitedParticles_";
+        efname << ippl::Comm->size();
+        efname << "_manager";
+        efname << ".csv";
+        Inform exitOut(NULL, efname.str().c_str(), Inform::APPEND);
+        exitOut.precision(16);
+        exitOut.setf(std::ios::scientific, std::ios::floatfield);
+
+        exitOut << "Time,Particle_id,Cell_id" << endl;
+
+        // Print header for missed cells
+        std::stringstream mfname;
+        mfname << "data/MissedCells_";
+        mfname << ippl::Comm->size();
+        mfname << "_manager";
+        mfname << ".csv";
+        Inform missOut(NULL, mfname.str().c_str(), Inform::APPEND);
+        missOut.precision(16);
+        missOut.setf(std::ios::scientific, std::ios::floatfield);
+
+        missOut << "Time,Particle_id,Cell_id" << endl;
+
+        // Print header for missed weights
+        std::stringstream wfname;
+        wfname << "data/MissedWeights_";
+        wfname << ippl::Comm->size();
+        wfname << "_manager";
+        wfname << ".csv";
+        Inform weightsOut(NULL, wfname.str().c_str(), Inform::APPEND);
+        weightsOut.precision(16);
+        weightsOut.setf(std::ios::scientific, std::ios::floatfield);
+
+        weightsOut << "Time,Particle_id,Cell_id,weightSum,W0,W1,W2,W3,W4,W5,W6,W7" << endl;
     }
 
     void initializeParticles(const char* particles_filename) {
@@ -332,56 +381,9 @@ public:
             Inform csvout(NULL, fname.str().c_str(), Inform::APPEND);
             csvout.precision(16);
             csvout.setf(std::ios::scientific, std::ios::floatfield);
-            if ( std::fabs(this->time_m) < 1e-14 ) {
-                csvout << "Time,Particle_id,Position_x,Position_y,Position_z,Cell_id,Velocity_x,Velocity_y,Velocity_z,E_kin,B_x,B_y,B_z,Mag_B,RotB_x,RotB_y,RotB_z,Mag_RotB,W0,W1,W2,W3,W4,W5,W6,W7" << endl;
+            
+            csvout << "Time,Particle_id,Position_x,Position_y,Position_z,Cell_id,Velocity_x,Velocity_y,Velocity_z,E_kin,B_x,B_y,B_z,Mag_B,RotB_x,RotB_y,RotB_z,Mag_RotB,W0,W1,W2,W3,W4,W5,W6,W7" << endl;
 
-                // Print header for lost particles
-                std::stringstream fname;
-                fname << "data/LostParticles_";
-                fname << ippl::Comm->size();
-                fname << "_manager";
-                fname << ".csv";
-                Inform lostout(NULL, fname.str().c_str(), Inform::APPEND);
-                lostout.precision(16);
-                lostout.setf(std::ios::scientific, std::ios::floatfield);
-                lostout << "Time,Particle_id,Cell_id,Boundary_type" << endl;
-
-                // Print header for exited particles
-                std::stringstream efname;
-                efname << "data/ExitedParticles_";
-                efname << ippl::Comm->size();
-                efname << "_manager";
-                efname << ".csv";
-                Inform exitOut(NULL, efname.str().c_str(), Inform::APPEND);
-                exitOut.precision(16);
-                exitOut.setf(std::ios::scientific, std::ios::floatfield);
-
-                exitOut << "Time,Particle_id,Cell_id" << endl;
-
-                // Print header for missed cells
-                std::stringstream mfname;
-                mfname << "data/MissedCells_";
-                mfname << ippl::Comm->size();
-                mfname << "_manager";
-                mfname << ".csv";
-                Inform missOut(NULL, mfname.str().c_str(), Inform::APPEND);
-                missOut.precision(16);
-                missOut.setf(std::ios::scientific, std::ios::floatfield);
-
-                missOut << "Time,Particle_id,Cell_id" << endl;
-
-                // Print header for missed weights
-                std::stringstream wfname;
-                wfname << "data/MissedWeights_";
-                wfname << ippl::Comm->size();
-                wfname << "_manager";
-                wfname << ".csv";
-                Inform weightsOut(NULL, wfname.str().c_str(), Inform::APPEND);
-                weightsOut.precision(16);
-                weightsOut.setf(std::ios::scientific, std::ios::floatfield);
-
-                weightsOut << "Time,Particle_id,Cell_id,weightSum,W0,W1,W2,W3,W4,W5,W6,W7" << endl;
-            }
             for(unsigned i = 0; i < this->pcontainer_m->getTotalNum(); ++i){
                 Vector_t<T, Dim> CrossB = Vector_t<T, Dim>{(this->pcontainer_m->B(i)[2] - this->pcontainer_m->B(i)[1])
                                             , (this->pcontainer_m->B(i)[0] - this->pcontainer_m->B(i)[2])
