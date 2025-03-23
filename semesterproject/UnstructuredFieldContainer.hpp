@@ -7,7 +7,7 @@
 #include <vtkUnstructuredGridWriter.h>
 #include <vtkGradientFilter.h>
 #include <vtkArrayCalculator.h>
-#include <vtkCellLocator.h>
+#include <vtkStaticCellLocator.h>
 #include <vtkPointData.h>
 #include <vtkCellData.h>
 #include <vtkGeometryFilter.h>
@@ -33,10 +33,20 @@ public:
             std::cout << "Array " << i << ": " << cellData->GetArrayName(i) << std::endl;
         }
 
-        // Create and build a cell locator
-        locator = vtkSmartPointer<vtkCellLocator>::New();
-        locator->SetDataSet(grid);
-        locator->BuildLocator();
+	    std::cout << "Grid read from file: " << grid_filename << std::endl;
+
+        // Get the number of threads from Kokkos
+        int numThreads = Kokkos::DefaultExecutionSpace::concurrency();
+        std::cout << "Number of threads available: " << numThreads << std::endl;
+
+        locators.resize(numThreads);
+        for (int i = 0; i < numThreads; ++i) {
+            locators[i] = vtkSmartPointer<vtkStaticCellLocator>::New();
+            locators[i]->SetDataSet(grid);
+            locators[i]->BuildLocator();
+        }
+
+	    std::cout << "locators build successfully" << std::endl;
 
         // Call grid->FindCell to make it thread safe (it is not thread safe if called for the first time in a parallel region)
         double point[3] = {0.1, 0.1, 0.1};
@@ -55,6 +65,9 @@ public:
         vtkIdType pointId = 0;
         vtkSmartPointer<vtkIdList> cellList = vtkSmartPointer<vtkIdList>::New();
         grid->GetPointCells(pointId, cellList);
+
+        // Get B-field array
+        fieldArray = grid->GetPointData()->GetArray(B_field_name_m);
     }
 
     ~UnstructuredFieldContainer(){}
@@ -62,7 +75,8 @@ public:
 private:
     const char* B_field_name_m;
     vtkSmartPointer<vtkUnstructuredGrid> grid;
-    vtkSmartPointer<vtkCellLocator> locator;
+    std::vector<vtkSmartPointer<vtkStaticCellLocator>> locators;
+    vtkSmartPointer<vtkDataArray> fieldArray;
 
     void readGrid(const char* grid_filename) {
         // Create a reader .vtk file
@@ -250,8 +264,9 @@ public:
         vtkSmartPointer<vtkGenericCell> GenCell = vtkSmartPointer<vtkGenericCell>::New();
         double pcoords[Dim];
 
-        vtkIdType cellId = this->locator->FindCell(point, tol2, GenCell, pcoords, weights);
-        
+        int threadId = Kokkos::DefaultExecutionSpace::impl_hardware_thread_id();
+        vtkIdType cellId = locators[threadId]->FindCell(point, tol2, GenCell, pcoords, weights);
+
         return cellId;
     }
 
@@ -335,6 +350,7 @@ public:
         // Check if the interpolation weights are normalized
         double weightSum = 0.0;
         bool positiveWeights = true;
+        assert(cell->GetNumberOfPoints() <= 8);
 
         for(unsigned i = 0; i < cell->GetNumberOfPoints(); i++) {
             weightSum += weights[i];
@@ -350,9 +366,6 @@ public:
             }
             return -3;
         }
-
-        // Access the field
-        vtkSmartPointer<vtkDataArray> fieldArray = grid->GetPointData()->GetArray(B_field_name_m);
         
         double B_val[Dim];     
         for(unsigned i = 0; i < cell->GetNumberOfPoints(); i++) {
@@ -360,7 +373,7 @@ public:
             w[i] = weights[i];
             
             vtkIdType pointId = cell->GetPointId(i);
-            fieldArray->GetTuple(pointId, B_val);
+            this->fieldArray->GetTuple(pointId, B_val);
             for(unsigned j = 0; j < Dim; j++) {
                 B_field_ref[j] += weights[i] * B_val[j];
             }

@@ -203,7 +203,7 @@ public:
         for(unsigned i = 0; i < pc->getTotalNum(); ++i){
             pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i), pc->weights(i));
             assert(pc->cellId(i) != -1);    // Check if the initial particle position is inside the domain
-            m << "position particle " << i << " = " << pc->R(i) << endl;
+            // m << "position particle " << i << " = " << pc->R(i) << endl;
         }
 
         std::cout << "Particle data read from the file" << std::endl;
@@ -222,12 +222,12 @@ public:
                 SplitSum += pc->V(i)[j];
             }
 
-            std::cout << absv << ", " << SplitSum << std::endl;
+            // std::cout << absv << ", " << SplitSum << std::endl;
             pc->V(i) = Vector_t<T, Dim>{absv*std::sqrt(pc->V(i)[0]/SplitSum), absv*std::sqrt(pc->V(i)[1]/SplitSum), absv*std::sqrt(pc->V(i)[2]/SplitSum)};
             //pc->V(i) = Vector_t<T, Dim>{absv/Kokkos::sqrt(3), absv/Kokkos::sqrt(3), absv/Kokkos::sqrt(3)};
             //pc->V(i) = Vector_t<T, Dim>{absv/Kokkos::sqrt(2), absv/Kokkos::sqrt(2), 0.0};
             //pc->V(i) = Vector_t<T, Dim>{0.0, 0.0, absv};
-            std::cout << "Particle " << i << " velocity: " << pc->V(i) << std::endl;
+            // std::cout << "Particle " << i << " velocity: " << pc->V(i) << std::endl;
         }
 
         // Calculate kinetic Energy
@@ -311,7 +311,7 @@ public:
 
         Kokkos::View<bool*> invalid("invalid_particles", pc->getTotalNum());
         Kokkos::deep_copy(invalid, false);
-        
+
         Kokkos::parallel_reduce("ParticleUpdate", Kokkos::RangePolicy<int>(0, pc->getTotalNum()), KOKKOS_CLASS_LAMBDA (const int& i, int& lLostNum) {
                 IpplTimings::startTimer(UpdateTimer);
                 // Check if the particle position is inside the domain and interpolate the magnetic field at the new position
