@@ -24,7 +24,12 @@ template <typename T, unsigned Dim>
 class UnstructuredFieldContainer{
 public:
     UnstructuredFieldContainer(const char* grid_filename, const char* B_field_name = "B_Field") : B_field_name_m(B_field_name) {
-        // Read the grid from the file
+        // Get the number of threads from Kokkos
+        int numThreads = Kokkos::DefaultExecutionSpace::concurrency();
+        std::cout << "Number of threads available: " << numThreads << std::endl;
+        
+        // Read the grid and grid copies for each thread from the file
+        grids.resize(numThreads);
         readGrid(grid_filename);
         
         // Print all the arrays in the elements
@@ -34,10 +39,6 @@ public:
         }
 
 	    std::cout << "Grid read from file: " << grid_filename << std::endl;
-
-        // Get the number of threads from Kokkos
-        int numThreads = Kokkos::DefaultExecutionSpace::concurrency();
-        std::cout << "Number of threads available: " << numThreads << std::endl;
 
         locators.resize(numThreads);
         for (int i = 0; i < numThreads; ++i) {
@@ -75,6 +76,7 @@ public:
 private:
     const char* B_field_name_m;
     vtkSmartPointer<vtkUnstructuredGrid> grid;
+    std::vector<vtkSmartPointer<vtkUnstructuredGrid>> grids;
     std::vector<vtkSmartPointer<vtkStaticCellLocator>> locators;
     vtkSmartPointer<vtkDataArray> fieldArray;
 
@@ -84,8 +86,14 @@ private:
         reader->SetFileName(grid_filename);
         reader->Update();
         
-        // Get the unstructured grid from the reader
+        // Get the unstructured grid and copies for each thread from the reader
+        int numThreads = Kokkos::DefaultExecutionSpace::concurrency();
+        
         grid = reader->GetOutput();
+        for (int i = 0; i < numThreads; ++i) {
+            grids[i] = reader->GetOutput();
+        }
+
         assert(grid);
         
         // Check that the grid contains points, cells, and a B vector field
@@ -283,7 +291,9 @@ public:
 
         // Get the cell that does not contain the point, but was found by the locator
         vtkSmartPointer<vtkGenericCell> cell = vtkSmartPointer<vtkGenericCell>::New();
-        grid->GetCell(wrongId, cell);
+
+        int threadId = Kokkos::DefaultExecutionSpace::impl_hardware_thread_id();
+        grids[threadId]->GetCell(wrongId, cell);
 
         // Get the points of the cell
         vtkSmartPointer<vtkIdList> pointIds = cell->GetPointIds();
@@ -292,13 +302,13 @@ public:
         for (int i = 0; i < pointIds->GetNumberOfIds(); i++) {
             // Get cells containing the point
             vtkSmartPointer<vtkIdList> cellList = vtkSmartPointer<vtkIdList>::New();
-            grid->GetPointCells(pointIds->GetId(i), cellList);
+            grids[threadId]->GetPointCells(pointIds->GetId(i), cellList);
 
             for(int j = 0; j < cellList->GetNumberOfIds(); j++) {
                 // Get the cell that contains the point
                 vtkSmartPointer<vtkGenericCell> GenCell = vtkSmartPointer<vtkGenericCell>::New();
                 vtkIdType cellId = cellList->GetId(j);
-                grid->GetCell(cellId, GenCell);
+                grids[threadId]->GetCell(cellId, GenCell);
 
                 // Check if the point is inside the cell
                 double point[3] = { R_ref[0], R_ref[1], R_ref[2] };
@@ -328,6 +338,8 @@ public:
     }
 
     vtkIdType FindCellAndInterpolateField(Vector_t<double, Dim> R, Vector_t<double, Dim> &interpolatedField, Vector_t<double, 8> &w) {
+        // Get thread Id
+        int threadId = Kokkos::DefaultExecutionSpace::impl_hardware_thread_id();
 
         // Set the interpolated field to zero
         Vector_t<double, Dim> B_field_ref = Vector_t<double, Dim>(0.0);
@@ -345,7 +357,7 @@ public:
 
         // get the cell that contains the point
         vtkSmartPointer<vtkGenericCell> cell = vtkSmartPointer<vtkGenericCell>::New();
-        grid->GetCell(cellId, cell);
+        grids[threadId]->GetCell(cellId, cell);
 
         // Check if the interpolation weights are normalized
         double weightSum = 0.0;

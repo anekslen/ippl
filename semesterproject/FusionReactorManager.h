@@ -27,8 +27,8 @@ public:
     using UParticleContainer_t = UParticleContainer<T, Dim>;
     using UnstructuredFieldContainer_t = UnstructuredFieldContainer<T, Dim>;
 
-    FusionReactorManager(size_type totalP_, int nt_, std::string& stepMethod_, double dt_)
-         : UnstructuredGridManager<T, Dim, UParticleContainer<T, Dim>, UnstructuredFieldContainer<T, Dim>>(totalP_, nt_, stepMethod_, dt_) {}
+    FusionReactorManager(size_type totalP_, int nt_, std::string& stepMethod_, const char* output_folder_, double dt_)
+         : UnstructuredGridManager<T, Dim, UParticleContainer<T, Dim>, UnstructuredFieldContainer<T, Dim>>(totalP_, nt_, stepMethod_, output_folder_, dt_) {}
 
     ~FusionReactorManager(){}
 
@@ -76,13 +76,17 @@ public:
 
         ufc->calculateCurl("B_Field", "Vorticity");
         ufc->calculateMagnitude("Vorticity", "VorticityMagnitude");
-        ufc->writeField("data/curl.csv", "Vorticity", true, "VorticityMagnitude");
+
+        std::string field_filename = std::string(this->output_folder_m) + "/curl.csv";
+        const char* field_filename_cstr = field_filename.c_str();
+        ufc->writeField(field_filename_cstr, "Vorticity", true, "VorticityMagnitude");
 
         // Create header for the output files
 
         // Print header for lost particles
         std::stringstream fname;
-        fname << "data/LostParticles_";
+        fname << this->output_folder_m;
+        fname << "/LostParticles_";
         fname << ippl::Comm->size();
         fname << "_manager";
         fname << ".csv";
@@ -93,7 +97,8 @@ public:
 
         // Print header for exited particles
         std::stringstream efname;
-        efname << "data/ExitedParticles_";
+        efname << this->output_folder_m;
+        efname << "/ExitedParticles_";
         efname << ippl::Comm->size();
         efname << "_manager";
         efname << ".csv";
@@ -105,7 +110,8 @@ public:
 
         // Print header for missed cells
         std::stringstream mfname;
-        mfname << "data/MissedCells_";
+        mfname << this->output_folder_m;
+        mfname << "/MissedCells_";
         mfname << ippl::Comm->size();
         mfname << "_manager";
         mfname << ".csv";
@@ -117,7 +123,8 @@ public:
 
         // Print header for missed weights
         std::stringstream wfname;
-        wfname << "data/MissedWeights_";
+        wfname << this->output_folder_m;
+        wfname << "/MissedWeights_";
         wfname << ippl::Comm->size();
         wfname << "_manager";
         wfname << ".csv";
@@ -374,7 +381,8 @@ public:
 
         if (ippl::Comm->rank() == 0) {
             std::stringstream fname;
-            fname << "data/Particles_";
+            fname << this->output_folder_m;
+            fname << "/Particles_";
             fname << ippl::Comm->size();
             fname << "_manager";
             fname << ".csv";
@@ -409,7 +417,8 @@ public:
         Inform m("dumpLostParticles");
         if (ippl::Comm->rank() == 0) {
             std::stringstream fname;
-            fname << "data/LostParticles_";
+            fname << this->output_folder_m;
+            fname << "/LostParticles_";
             fname << ippl::Comm->size();
             fname << "_manager";
             fname << ".csv";
@@ -426,7 +435,8 @@ public:
 
             if(this->pcontainer_m->cellId(i) == -1) {
                 std::stringstream efname;
-                efname << "data/ExitedParticles_";
+                efname << this->output_folder_m;
+                efname << "/ExitedParticles_";
                 efname << ippl::Comm->size();
                 efname << "_manager";
                 efname << ".csv";
@@ -439,7 +449,8 @@ public:
 
             if(this->pcontainer_m->cellId(i) == -2) {
                 std::stringstream mfname;
-                mfname << "data/MissedCells_";
+                mfname << this->output_folder_m;
+                mfname << "/MissedCells_";
                 mfname << ippl::Comm->size();
                 mfname << "_manager";
                 mfname << ".csv";
@@ -452,7 +463,8 @@ public:
 
             if(this->pcontainer_m->cellId(i) == -3) {
                 std::stringstream wfname;
-                wfname << "data/MissedWeights_";
+                wfname << this->output_folder_m;
+                wfname << "/MissedWeights_";
                 wfname << ippl::Comm->size();
                 wfname << "_manager";
                 wfname << ".csv";
