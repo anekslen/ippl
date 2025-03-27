@@ -74,6 +74,12 @@ public:
         pc->dV = pc->Q / pc->mass * ippl::cross(pc->V, pc->B);
         pc->V = pc->V + 0.5 * this->dt_m * pc->dV;
 
+        // Calculate gradient of the magnetic field
+        ufc->calculateGrad("B_Field", "Gradient");
+        ufc->calculateMagnitude("Gradient", "GradientMagnitude");
+        ufc->writeField("data/gradient.csv", "Gradient", true, "GradientMagnitude");
+
+        // Calculate curl of the magnetic field
         ufc->calculateCurl("B_Field", "Vorticity");
         ufc->calculateMagnitude("Vorticity", "VorticityMagnitude");
         ufc->writeField("data/curl.csv", "Vorticity", true, "VorticityMagnitude");

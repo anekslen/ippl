@@ -164,6 +164,30 @@ public:
         grid->GetPointData()->GetArray("Vorticity")->SetName(output_field_name);
     }
 
+    
+    // Calculate the gradient of the vector field field_name and save it in the output_field_name
+    void calculateGrad(const char* field_name = "B_Field", const char* output_field_name = "Gradient") {
+        // Check that the field exists in the grid and is a vector field
+        assert(grid->GetPointData()->HasArray(field_name));
+        assert(grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents() == Dim);
+
+        // Check that the output field does not exist in the grid
+        assert(!grid->GetPointData()->HasArray(output_field_name));
+
+        // Calculate the curl of the vector field at each point
+        vtkSmartPointer<vtkGradientFilter> gradientFilter = vtkSmartPointer<vtkGradientFilter>::New();
+        gradientFilter->SetInputData(grid);
+        gradientFilter->SetInputScalars(vtkDataObject::FIELD_ASSOCIATION_POINTS, field_name);
+        gradientFilter->SetComputeGradient(true);   // Enable the gradient computation
+        gradientFilter->SetComputeVorticity(false);   // Disable the curl computation
+        gradientFilter->SetResultArrayName(output_field_name);
+        gradientFilter->Update();
+
+
+        // Add the curl field to the grid and rename it to the output_field_name
+        grid->GetPointData()->AddArray(gradientFilter->GetUnstructuredGridOutput()->GetPointData()->GetArray(output_field_name));
+    }
+
     // Define functions to calculate the magnitude of a vector field
     void calculateMagnitude(const char* field_name = "B_Field", const char* output_field_name = "Magnitude") {
         // Check that the field exists in the grid and is a vector field
