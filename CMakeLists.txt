@@ -271,7 +271,9 @@ if (ENABLE_VTK)
     CommonCore
     CommonDataModel
     FiltersGeneral
+    FiltersCore
     IOLegacy
+    CommonExecutionModel
     REQUIRED)
     add_subdirectory (semesterproject)
 endif()

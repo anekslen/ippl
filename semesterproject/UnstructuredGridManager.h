@@ -10,10 +10,11 @@
 template <typename T, unsigned Dim, class pc = UParticleContainer<T, Dim>, class ufc = UnstructuredFieldContainer<T, Dim>>
 class UnstructuredGridManager {
 public:
-    UnstructuredGridManager(size_type totalP_, int nt_, std::string& stepMethod_, double dt_)
+    UnstructuredGridManager(size_type totalP_, int nt_, std::string& stepMethod_, const char* output_folder_, double dt_)
         : totalP_m(totalP_)
         , nt_m(nt_)
         , stepMethod_m(stepMethod_)
+        , output_folder_m(output_folder_)
         , dt_m(dt_)
         , pcontainer_m(nullptr)
         , ufcontainer_m(nullptr) {}
@@ -23,6 +24,8 @@ protected:
     size_type totalP_m;                         // total number of particles
     int nt_m;                                   // number of time steps
     std::string stepMethod_m;                   // time integration method (only LeapFrog is implemented)
+
+    const char* output_folder_m;                // folder for output data
     
     double time_m;                              // simulation time
     double dt_m;                                // time step

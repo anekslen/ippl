@@ -48,10 +48,11 @@ int main(int argc, char* argv[]) {
         std::string step_method = argv[arg++];
         const char* grid_filename = argv[arg++];
         const char* particles_filename = argv[arg++];
+        const char* output_folder = argv[arg++];
         double dt = std::atof(argv[arg++]);
 
         // Create an instance of a manger for the considered application
-        FusionReactorManager<T, Dim> manager(totalP, nt, step_method, dt);
+        FusionReactorManager<T, Dim> manager(totalP, nt, step_method, output_folder, dt);
 
         // Perform pre-run operations, including creating mesh, particles,...
         manager.pre_run(grid_filename, particles_filename);

@@ -27,8 +27,8 @@ public:
     using UParticleContainer_t = UParticleContainer<T, Dim>;
     using UnstructuredFieldContainer_t = UnstructuredFieldContainer<T, Dim>;
 
-    FusionReactorManager(size_type totalP_, int nt_, std::string& stepMethod_, double dt_)
-         : UnstructuredGridManager<T, Dim, UParticleContainer<T, Dim>, UnstructuredFieldContainer<T, Dim>>(totalP_, nt_, stepMethod_, dt_) {}
+    FusionReactorManager(size_type totalP_, int nt_, std::string& stepMethod_, const char* output_folder_, double dt_)
+         : UnstructuredGridManager<T, Dim, UParticleContainer<T, Dim>, UnstructuredFieldContainer<T, Dim>>(totalP_, nt_, stepMethod_, output_folder_, dt_) {}
 
     ~FusionReactorManager(){}
 
@@ -82,13 +82,17 @@ public:
         // Calculate curl of the magnetic field
         ufc->calculateCurl("B_Field", "Vorticity");
         ufc->calculateMagnitude("Vorticity", "VorticityMagnitude");
-        ufc->writeField("data/curl.csv", "Vorticity", true, "VorticityMagnitude");
+
+        std::string field_filename = std::string(this->output_folder_m) + "/curl.csv";
+        const char* field_filename_cstr = field_filename.c_str();
+        ufc->writeField(field_filename_cstr, "Vorticity", true, "VorticityMagnitude");
 
         // Create header for the output files
 
         // Print header for lost particles
         std::stringstream fname;
-        fname << "data/LostParticles_";
+        fname << this->output_folder_m;
+        fname << "/LostParticles_";
         fname << ippl::Comm->size();
         fname << "_manager";
         fname << ".csv";
@@ -99,7 +103,8 @@ public:
 
         // Print header for exited particles
         std::stringstream efname;
-        efname << "data/ExitedParticles_";
+        efname << this->output_folder_m;
+        efname << "/ExitedParticles_";
         efname << ippl::Comm->size();
         efname << "_manager";
         efname << ".csv";
@@ -111,7 +116,8 @@ public:
 
         // Print header for missed cells
         std::stringstream mfname;
-        mfname << "data/MissedCells_";
+        mfname << this->output_folder_m;
+        mfname << "/MissedCells_";
         mfname << ippl::Comm->size();
         mfname << "_manager";
         mfname << ".csv";
@@ -123,7 +129,8 @@ public:
 
         // Print header for missed weights
         std::stringstream wfname;
-        wfname << "data/MissedWeights_";
+        wfname << this->output_folder_m;
+        wfname << "/MissedWeights_";
         wfname << ippl::Comm->size();
         wfname << "_manager";
         wfname << ".csv";
@@ -209,7 +216,7 @@ public:
         for(unsigned i = 0; i < pc->getTotalNum(); ++i){
             pc->cellId(i) = ufc->FindCellAndInterpolateField(pc->R(i), pc->B(i), pc->weights(i));
             assert(pc->cellId(i) != -1);    // Check if the initial particle position is inside the domain
-            m << "position particle " << i << " = " << pc->R(i) << endl;
+            // m << "position particle " << i << " = " << pc->R(i) << endl;
         }
 
         std::cout << "Particle data read from the file" << std::endl;
@@ -228,12 +235,12 @@ public:
                 SplitSum += pc->V(i)[j];
             }
 
-            std::cout << absv << ", " << SplitSum << std::endl;
+            // std::cout << absv << ", " << SplitSum << std::endl;
             pc->V(i) = Vector_t<T, Dim>{absv*std::sqrt(pc->V(i)[0]/SplitSum), absv*std::sqrt(pc->V(i)[1]/SplitSum), absv*std::sqrt(pc->V(i)[2]/SplitSum)};
             //pc->V(i) = Vector_t<T, Dim>{absv/Kokkos::sqrt(3), absv/Kokkos::sqrt(3), absv/Kokkos::sqrt(3)};
             //pc->V(i) = Vector_t<T, Dim>{absv/Kokkos::sqrt(2), absv/Kokkos::sqrt(2), 0.0};
             //pc->V(i) = Vector_t<T, Dim>{0.0, 0.0, absv};
-            std::cout << "Particle " << i << " velocity: " << pc->V(i) << std::endl;
+            // std::cout << "Particle " << i << " velocity: " << pc->V(i) << std::endl;
         }
 
         // Calculate kinetic Energy
@@ -317,7 +324,7 @@ public:
 
         Kokkos::View<bool*> invalid("invalid_particles", pc->getTotalNum());
         Kokkos::deep_copy(invalid, false);
-        
+
         Kokkos::parallel_reduce("ParticleUpdate", Kokkos::RangePolicy<int>(0, pc->getTotalNum()), KOKKOS_CLASS_LAMBDA (const int& i, int& lLostNum) {
                 IpplTimings::startTimer(UpdateTimer);
                 // Check if the particle position is inside the domain and interpolate the magnetic field at the new position
@@ -380,7 +387,8 @@ public:
 
         if (ippl::Comm->rank() == 0) {
             std::stringstream fname;
-            fname << "data/Particles_";
+            fname << this->output_folder_m;
+            fname << "/Particles_";
             fname << ippl::Comm->size();
             fname << "_manager";
             fname << ".csv";
@@ -415,7 +423,8 @@ public:
         Inform m("dumpLostParticles");
         if (ippl::Comm->rank() == 0) {
             std::stringstream fname;
-            fname << "data/LostParticles_";
+            fname << this->output_folder_m;
+            fname << "/LostParticles_";
             fname << ippl::Comm->size();
             fname << "_manager";
             fname << ".csv";
@@ -432,7 +441,8 @@ public:
 
             if(this->pcontainer_m->cellId(i) == -1) {
                 std::stringstream efname;
-                efname << "data/ExitedParticles_";
+                efname << this->output_folder_m;
+                efname << "/ExitedParticles_";
                 efname << ippl::Comm->size();
                 efname << "_manager";
                 efname << ".csv";
@@ -445,7 +455,8 @@ public:
 
             if(this->pcontainer_m->cellId(i) == -2) {
                 std::stringstream mfname;
-                mfname << "data/MissedCells_";
+                mfname << this->output_folder_m;
+                mfname << "/MissedCells_";
                 mfname << ippl::Comm->size();
                 mfname << "_manager";
                 mfname << ".csv";
@@ -458,7 +469,8 @@ public:
 
             if(this->pcontainer_m->cellId(i) == -3) {
                 std::stringstream wfname;
-                wfname << "data/MissedWeights_";
+                wfname << this->output_folder_m;
+                wfname << "/MissedWeights_";
                 wfname << ippl::Comm->size();
                 wfname << "_manager";
                 wfname << ".csv";
