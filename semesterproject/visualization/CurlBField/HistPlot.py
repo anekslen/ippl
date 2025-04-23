@@ -2,69 +2,71 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Load the CSV files
-curl_new_path = 'curlNew.csv'  # Replace with the correct path if needed
-curl_old_path = 'curlOld.csv'
-
-curl_new_df = pd.read_csv(curl_new_path)
-curl_old_df = pd.read_csv(curl_old_path)
-
-# Columns to plot histograms for
-columns_to_plot = ['Vorticity_X', 'Vorticity_Y', 'Vorticity_Z', 'VorticityMagnitude']
-# Rename columns
-curl_new_df.rename(columns={'Vorticity_X': 'Magnetic curl X', 'Vorticity_Y': 'Magnetic curl Y', 'Vorticity_Z': 'Magnetic curl Z', 'VorticityMagnitude': 'Magnetic curl Magnitude'}, inplace=True)
-curl_old_df.rename(columns={'Vorticity_X': 'Magnetic curl X', 'Vorticity_Y': 'Magnetic curl Y', 'Vorticity_Z': 'Magnetic curl Z', 'VorticityMagnitude': 'Magnetic curl Magnitude'}, inplace=True)
-
-# Update columns to plot
-columns_to_plot = ['Magnetic curl X', 'Magnetic curl Y', 'Magnetic curl Z', 'Magnetic curl Magnitude']
-
-# Function to plot individual histograms
-def plot_individual_histograms(dataframe, title_prefix, output_file=None, normalize=False):
-    plt.figure(figsize=(16, 10))
-    for i, column in enumerate(columns_to_plot, 1):
-        plt.subplot(2, 2, i)
+def plot_histogram(dataframe, xlabel, output_file=None, normalize=False, new = True):
+    for column in columns:
+        plt.figure(figsize=(16, 10))
         weights = np.ones_like(dataframe[column]) / len(dataframe) if normalize else None
-        plt.hist(dataframe[column], bins=100, color='skyblue', edgecolor='black', alpha=0.7, weights= weights, log=True)
-        plt.title(f'{title_prefix} {column}')
-        plt.xlabel(f'{column} in T/m')
-        plt.ylabel('Frequency')
-    plt.tight_layout()
-    if output_file:
-        plt.savefig(output_file)
-    else:
-        plt.show()
+        if new:
+            plt.hist(dataframe[column], bins=100, color=[128/255, 0/255, 32/255], edgecolor='black', alpha=0.7, weights=weights, log=True)
+            plt.legend(["New Mesh"], fontsize=20)
+        else:
+            plt.hist(dataframe[column], bins=100, color=[0/255, 73/255, 104/255], edgecolor='black', alpha=0.7, weights=weights, log=True)
+            plt.legend(["Old Mesh"], fontsize=20)
+        plt.xlabel(xlabel, fontsize=20)
+        plt.ylabel('Relative Frequency [%]', fontsize=20)
+        plt.tight_layout()
+        if output_file:
+            plt.savefig(f"{output_file}_{column}.png")
+        else:
+            plt.show()
 
 # Function to plot comparison histograms
-def plot_comparison_histograms(dataframe1, dataframe2, title1, title2, output_file=None, normalize=False):
-    plt.figure(figsize=(16, 10))
-    for i, column in enumerate(columns_to_plot, 1):
-        plt.subplot(2, 2, i)
+def plot_comparison_histograms(dataframe1, dataframe2, xlabel, output_file=None, single_output_file=None, normalize=False):
+    for column in columns:
+        plt.figure(figsize=(16, 10))
         weights1 = np.ones_like(dataframe1[column]) / len(dataframe1) if normalize else None
         weights2 = np.ones_like(dataframe2[column]) / len(dataframe2) if normalize else None
         min_val = min(dataframe1[column].min(), dataframe2[column].min())
         max_val = max(dataframe1[column].max(), dataframe2[column].max())
         bins = np.linspace(min_val, max_val, 100)
-        plt.hist(dataframe2[column], bins=bins, color='orange', alpha=0.6, label=title2, edgecolor='black', weights=weights2, log=True)
-        plt.hist(dataframe1[column], bins=bins, color='skyblue', alpha=0.6, label=title1, edgecolor='black', weights=weights1, log=True)
-        plt.title(f'Comparison: {column}')
-        plt.xlabel(f'{column} in T/m')
-        plt.ylabel('Frequency')
-        plt.legend()
-    plt.tight_layout()
-    if output_file:
-        plt.savefig(output_file)
-    else:
-        plt.show()
+        plt.hist(dataframe2[column], bins=bins, color=[0/255, 73/255, 104/255], alpha=0.7, label='Old Mesh', edgecolor='black', weights=weights2, log=True)
+        plt.hist(dataframe1[column], bins=bins, color=[128/255, 0/255, 32/255], alpha=0.7, label='New Mesh', edgecolor='black', weights=weights1, log=True)
+        plt.xlabel(xlabel, fontsize=25)
+        plt.ylabel('Relative  Frequency [%]', fontsize=25)
+        plt.xticks(fontsize=25)
+        plt.yticks(fontsize=25)
+        plt.legend(fontsize=25)
+        if single_output_file:
+            plt.savefig(f"{single_output_file}_{column}.png")
+        else:
+            plt.show()
 
+
+
+# Load the CSV files
+curl_new_path = '/home/annah/semesterproject/code/ippl/semesterproject/mesh/reactormesh/vtkInput/NewMesh/curl.csv'
+grad_new_path = '/home/annah/semesterproject/code/ippl/semesterproject/mesh/reactormesh/vtkInput/NewMesh/grad.csv'
+curl_old_path = '/home/annah/semesterproject/code/ippl/semesterproject/mesh/reactormesh/vtkInput/OldMesh/curl.csv'
+grad_old_path = '/home/annah/semesterproject/code/ippl/semesterproject/mesh/reactormesh/vtkInput/OldMesh/grad.csv'
+
+curl_new_df = pd.read_csv(curl_new_path)
+curl_old_df = pd.read_csv(curl_old_path)
+grad_new_df = pd.read_csv(grad_new_path)
+grad_old_df = pd.read_csv(grad_old_path)
+
+# Columns to plot histograms for
+columns = ["Magnitude"]
 
 norm = True
 
-# Generate individual histograms
-plot_individual_histograms(curl_new_df, "New Mesh -", output_file="histograms_new_data.png", normalize=norm)
-print("1")
-plot_individual_histograms(curl_old_df, "Old Mesh -", output_file="histograms_old_data.png", normalize=norm)
-print("1")
+# Generate individual histograms for curl
+plot_histogram(curl_new_df, xlabel = r'$|\nabla \times \mathbf{B}|$ [T/m]', output_file='curl_new', normalize=norm, new=True)
+plot_histogram(curl_old_df, xlabel = r'$|\nabla \times \mathbf{B}|$ [T/m]', output_file='curl_old', normalize=norm, new=False)
+# Generate comparison histograms for curl
+plot_comparison_histograms(curl_new_df, curl_old_df, xlabel=r'$|\nabla \times \mathbf{B}|$ [T/m]', output_file='curl_comparison', single_output_file='curl_comparison', normalize=norm)
 
-# Generate comparison histograms
-plot_comparison_histograms(curl_new_df, curl_old_df, "New Mesh", "Old Mesh", output_file="comparison_histograms.png", normalize=norm)
-print("1")
+# Generate individual histograms for grad
+plot_histogram(grad_new_df, xlabel=r'$|\nabla \cdot \mathbf{B}|$ [T/m]', output_file='grad_new', normalize=norm, new=True)
+plot_histogram(grad_old_df, xlabel=r'$|\nabla \cdot \mathbf{B}|$ [T/m]', output_file='grad_old', normalize=norm, new=False)
+# Generate comparison histograms for grad
+plot_comparison_histograms(grad_new_df, grad_old_df, xlabel=r'$|\nabla \cdot \mathbf{B}|$ [T/m]', output_file='grad_comparison', single_output_file='grad_comparison', normalize=norm)
