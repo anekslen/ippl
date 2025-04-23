@@ -10,14 +10,15 @@
 template <typename T, unsigned Dim, class pc = UParticleContainer<T, Dim>, class ufc = UnstructuredFieldContainer<T, Dim>>
 class UnstructuredGridManager {
 public:
-    UnstructuredGridManager(size_type totalP_, int nt_, std::string& stepMethod_, const char* output_folder_, double dt_)
+    UnstructuredGridManager(size_type totalP_, int nt_, std::string& stepMethod_, const char* output_folder_, double dt_, bool writeData_)
         : totalP_m(totalP_)
         , nt_m(nt_)
         , stepMethod_m(stepMethod_)
         , output_folder_m(output_folder_)
         , dt_m(dt_)
         , pcontainer_m(nullptr)
-        , ufcontainer_m(nullptr) {}
+        , ufcontainer_m(nullptr)
+        , writeData(writeData_) {}
     ~UnstructuredGridManager(){}
 
 protected:
@@ -33,6 +34,8 @@ protected:
 
     std::shared_ptr<pc> pcontainer_m;           // particle container
     std::shared_ptr<ufc> ufcontainer_m;         // unstructured field container
+
+    bool writeData;                             // flag for writing data for each time step not only the last position of each particle
 
 
     // variables for dummy mesh used in particle container
@@ -73,7 +76,9 @@ public:
 
     void pre_step() {
         // write solution to output file
-        // this->dump();
+        if (writeData) {
+            this->dump();
+        }
     }
 
     void post_step() {

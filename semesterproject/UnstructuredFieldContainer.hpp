@@ -105,63 +105,65 @@ private:
 
 public:
 
-    // Write the grid to a file
-    void writeGrid(const char* grid_filename) {
-        // Check that the magnitude field exists in the grid and is a scalar field, if required
-        vtkSmartPointer<vtkUnstructuredGridWriter> writer = vtkSmartPointer<vtkUnstructuredGridWriter>::New();
-        writer->SetFileName(grid_filename);
-        writer->SetInputData(grid);
-        writer->Write();
+// Write the grid to a file
+void writeGrid(const char* grid_filename) {
+    // Check that the magnitude field exists in the grid and is a scalar field, if required
+    vtkSmartPointer<vtkUnstructuredGridWriter> writer = vtkSmartPointer<vtkUnstructuredGridWriter>::New();
+    writer->SetFileName(grid_filename);
+    writer->SetInputData(grid);
+    writer->Write();
+}
+
+// Write a vector field to a file
+void writeField(const char* field_filename, const char* field_name = "B_Field", bool Magnitude = true, const char* magnitude_field_name = "Magnitude") {
+    
+    // Check that the field exists in the grid
+    assert(grid->GetPointData()->HasArray(field_name));
+    int numComponents = grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents();
+    assert(numComponents == 3 || numComponents == 9); // Ensure the field has 3 or 9 components
+
+    if (Magnitude) {
+        assert(grid->GetPointData()->HasArray(magnitude_field_name));
+        assert(grid->GetPointData()->GetArray(magnitude_field_name)->GetNumberOfComponents() == 1);
     }
 
-    // Write a vector field to a file
-    void writeField(const char* field_filename, const char* field_name = "B_Field", bool Magnitude = true, const char* magnitude_field_name = "Magnitude") {
-        
-        // Check that the field exists in the grid and is a vector field
-        assert(grid->GetPointData()->HasArray(field_name));
-        assert(grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents() == Dim);
+    // Write the field values to a CSV file
+    std::ofstream file(field_filename);
 
-        assert(Magnitude && grid->GetPointData()->HasArray(magnitude_field_name));
-        assert(Magnitude && grid->GetPointData()->GetArray(magnitude_field_name)->GetNumberOfComponents() == 1);
+    // Write the header
+    file << "Point_Index";
+    for (int i = 0; i < numComponents; ++i) {
+        file << "," << field_name << "_C" << i;
+    }
+    if (Magnitude) {
+        file << "," << "Magnitude";
+    }
+    file << std::endl;
 
-        // Write the field values to csv file
-        std::ofstream file(field_filename);
+    // Write the field values
+    for (int i = 0; i < grid->GetPoints()->GetNumberOfPoints(); i++) {
+        std::vector<double> val(numComponents);
+        grid->GetPointData()->GetArray(field_name)->GetTuple(i, val.data());
 
+        double magnitude = 0.0;
         if (Magnitude) {
-            file << "Point_Index," << field_name << "_X," << field_name << "_Y," << field_name << "_Z," << magnitude_field_name << std::endl;
-        }
-        else {
-            file << "Point_Index," << field_name << "_X," << field_name << "_Y," << field_name << "_Z" << std::endl;
+            magnitude = grid->GetPointData()->GetArray(magnitude_field_name)->GetTuple1(i);
         }
 
-        // Write the field values to csv file
-        for (int i = 0; i < grid->GetPoints()->GetNumberOfPoints(); i++) {
-            double val[Dim];
-            double magnitude;
-            grid->GetPointData()->GetArray(field_name)->GetTuple(i, val);
-            if (Magnitude) {
-                magnitude = grid->GetPointData()->GetArray(magnitude_field_name)->GetTuple1(i);
-            }
+        // Set the format for floating-point values
+        file << std::scientific << std::setprecision(4) << std::setw(10);
 
-            // Set the format for floating-point values
-            file << std::scientific << std::setprecision(4) << std::setw(10);
-
-            if (Magnitude) {
-                file << i << ","
-                    << std::setw(10) << val[0] << ","
-                    << std::setw(10) << val[1] << ","
-                    << std::setw(10) << val[2] << ","
-                    << std::setw(10) << magnitude << std::endl;
-            }
-            else {
-                file << i << ","
-                    << std::setw(10) << val[0] << ","
-                    << std::setw(10) << val[1] << ","
-                    << std::setw(10) << val[2] << std::endl;
-            }
+        file << i;
+        for (int j = 0; j < numComponents; ++j) {
+            file << "," << std::setw(10) << val[j];
         }
-        file.close();
+        if (Magnitude) {
+            file << "," << std::setw(10) << magnitude;
+        }
+        file << std::endl;
     }
+    file.close();
+}
 
     // Calculate the curl of the vector field field_name and save it in the output_field_name
     void calculateCurl(const char* field_name = "B_Field", const char* output_field_name = "Vorticity") {
@@ -171,7 +173,7 @@ public:
 
         // Check that the output field does not exist in the grid
         assert(!grid->GetPointData()->HasArray(output_field_name));
-
+        
         // Calculate the curl of the vector field at each point
         vtkSmartPointer<vtkGradientFilter> gradientFilter = vtkSmartPointer<vtkGradientFilter>::New();
         gradientFilter->SetInputData(grid);
@@ -179,23 +181,23 @@ public:
         gradientFilter->SetComputeGradient(false);   // Disable the gradient computation
         gradientFilter->SetComputeVorticity(true);   // Enable the curl computation
         gradientFilter->Update();
-
-
+        
+        
         // Add the curl field to the grid and rename it to the output_field_name
         grid->GetPointData()->AddArray(gradientFilter->GetUnstructuredGridOutput()->GetPointData()->GetArray("Vorticity"));
         grid->GetPointData()->GetArray("Vorticity")->SetName(output_field_name);
     }
-
+    
     
     // Calculate the gradient of the vector field field_name and save it in the output_field_name
     void calculateGrad(const char* field_name = "B_Field", const char* output_field_name = "Gradient") {
         // Check that the field exists in the grid and is a vector field
         assert(grid->GetPointData()->HasArray(field_name));
         assert(grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents() == Dim);
-
+        
         // Check that the output field does not exist in the grid
         assert(!grid->GetPointData()->HasArray(output_field_name));
-
+        
         // Calculate the curl of the vector field at each point
         vtkSmartPointer<vtkGradientFilter> gradientFilter = vtkSmartPointer<vtkGradientFilter>::New();
         gradientFilter->SetInputData(grid);
@@ -204,24 +206,23 @@ public:
         gradientFilter->SetComputeVorticity(false);   // Disable the curl computation
         gradientFilter->SetResultArrayName(output_field_name);
         gradientFilter->Update();
-
-
+        
         // Add the curl field to the grid and rename it to the output_field_name
         grid->GetPointData()->AddArray(gradientFilter->GetUnstructuredGridOutput()->GetPointData()->GetArray(output_field_name));
     }
-
+    
     // Define functions to calculate the magnitude of a vector field
     void calculateMagnitude(const char* field_name = "B_Field", const char* output_field_name = "Magnitude") {
         // Check that the field exists in the grid and is a vector field
         assert(grid->GetPointData()->HasArray(field_name));
         assert(grid->GetPointData()->GetArray(field_name)->GetNumberOfComponents() == Dim);
-
+        
         // Check that the output field does not exist in the grid
         assert(!grid->GetPointData()->HasArray(output_field_name));
-
+        
         // Calculate the magnitude of the curl at each point
         std::string function = "mag(" + std::string(field_name) + ")";
-
+        
         vtkSmartPointer<vtkArrayCalculator> magnitudeCalculator = vtkSmartPointer<vtkArrayCalculator>::New();
         magnitudeCalculator->SetInputData(grid);
         magnitudeCalculator->SetAttributeTypeToPointData();
@@ -229,11 +230,11 @@ public:
         magnitudeCalculator->SetFunction(function.c_str());    // Calculate the magnitude of the curl
         magnitudeCalculator->SetResultArrayName(output_field_name);
         magnitudeCalculator->Update();
-
+        
         // Add the magnitude of the curl to the curl grid
         grid->GetPointData()->AddArray(magnitudeCalculator->GetUnstructuredGridOutput()->GetPointData()->GetArray(output_field_name));
     }
-
+    
     void getGridBounds(Vector_t<double, Dim> &min, Vector_t<double, Dim> &max) {
         double bounds[6];
         grid->GetBounds(bounds);
@@ -242,11 +243,11 @@ public:
             max[i] = bounds[i * 2 + 1];
         }
     }
-
+    
     // TODO: this is now done for a grid in cylindric coordinates where we have 1/8 of the xy cyrcle and the upper z part of the grid, generalize this possibly
     Vector_t<double, Dim> getReferencePosition(Vector_t<double, Dim> R) {
         Vector_t<double, Dim> R_ref = ippl::fabs(R);
-
+        
         if(R_ref[0] <= R_ref[1]) {
             R_ref[0] = std::abs(R[1]);
             R_ref[1] = std::abs(R[0]);

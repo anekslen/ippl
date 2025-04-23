@@ -27,8 +27,8 @@ public:
     using UParticleContainer_t = UParticleContainer<T, Dim>;
     using UnstructuredFieldContainer_t = UnstructuredFieldContainer<T, Dim>;
 
-    FusionReactorManager(size_type totalP_, int nt_, std::string& stepMethod_, const char* output_folder_, double dt_)
-         : UnstructuredGridManager<T, Dim, UParticleContainer<T, Dim>, UnstructuredFieldContainer<T, Dim>>(totalP_, nt_, stepMethod_, output_folder_, dt_) {}
+    FusionReactorManager(size_type totalP_, int nt_, std::string& stepMethod_, const char* output_folder_, double dt_, bool writeData_)
+         : UnstructuredGridManager<T, Dim, UParticleContainer<T, Dim>, UnstructuredFieldContainer<T, Dim>>(totalP_, nt_, stepMethod_, output_folder_, dt_, writeData_) {}
 
     ~FusionReactorManager(){}
 
@@ -74,10 +74,14 @@ public:
         pc->dV = pc->Q / pc->mass * ippl::cross(pc->V, pc->B);
         pc->V = pc->V + 0.5 * this->dt_m * pc->dV;
 
+        
         // Calculate gradient of the magnetic field
         ufc->calculateGrad("B_Field", "Gradient");
         ufc->calculateMagnitude("Gradient", "GradientMagnitude");
-        ufc->writeField("data/gradient.csv", "Gradient", true, "GradientMagnitude");
+        
+        std::string grad_filename = std::string(this->output_folder_m) + "/grad.csv";
+        const char* grad_filename_cstr = grad_filename.c_str();
+        ufc->writeField(grad_filename_cstr, "Gradient", true, "GradientMagnitude");
 
         // Calculate curl of the magnetic field
         ufc->calculateCurl("B_Field", "Vorticity");
@@ -355,6 +359,7 @@ public:
         for(unsigned i = 0; i < pc->getTotalNum(); ++i){
             if(invalid(i)) {
                 dumpLostParticles(i);
+                std::cout << "Particle " << pc->Id(i) << " left the grid at time " << this->time_m << std::endl;
             }
         }
 
@@ -396,7 +401,9 @@ public:
             csvout.precision(16);
             csvout.setf(std::ios::scientific, std::ios::floatfield);
             
-            csvout << "Time,Particle_id,Position_x,Position_y,Position_z,Cell_id,Velocity_x,Velocity_y,Velocity_z,E_kin,B_x,B_y,B_z,Mag_B,RotB_x,RotB_y,RotB_z,Mag_RotB,W0,W1,W2,W3,W4,W5,W6,W7" << endl;
+            if ( std::fabs(this->time_m) < 1e-14 ) {
+                csvout << "Time,Particle_id,Position_x,Position_y,Position_z,Cell_id,Velocity_x,Velocity_y,Velocity_z,E_kin,B_x,B_y,B_z,Mag_B,RotB_x,RotB_y,RotB_z,Mag_RotB,W0,W1,W2,W3,W4,W5,W6,W7" << endl;
+            }
 
             for(unsigned i = 0; i < this->pcontainer_m->getTotalNum(); ++i){
                 Vector_t<T, Dim> CrossB = Vector_t<T, Dim>{(this->pcontainer_m->B(i)[2] - this->pcontainer_m->B(i)[1])
