@@ -14,7 +14,7 @@
 #include <json.hpp>
 #include <list>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image_write.hpp>
+#include <stb_image_write.h>
 
 #include "Undulator.h"
 #include "units.h"
@@ -1415,7 +1415,7 @@ int main(int argc, char* argv[]) {
         // test_gauss_law<scalar>(64);
         // test_amperes_law<scalar>(64);
         // goto exit;
-        config cfg               = read_config("../config.json");
+        config cfg               = read_config("../../config.json");
         const scalar frame_gamma = std::max(
             decltype(cfg)::scalar(1),
             cfg.bunch_gamma
