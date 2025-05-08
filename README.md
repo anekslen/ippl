@@ -34,16 +34,18 @@ The relevant options of IPPL are
 - `Heffte_VERSION`, default `MASTER`
   - If set to `MASTER`, an additional flag `Heffte_COMMIT_HASH` can be set, default `9eab7c0eb18e86acaccc2b5699b30e85a9e7bdda`
   - Currently, this is the only compatible commit of Heffte
-- `ENABLE_SOLVERS`, default `OFF`
-- `ENABLE_FFT`, default `OFF`
-  - If `ENABLE_FFT` is set, `Heffte_ENABLE_CUDA` will default to `ON` if `IPPL_PLATFORMS` contains `cuda`
+- `IPPL_DYL`, default `OFF`
+- `IPPL_ENABLE_SOLVERS`, default `OFF`
+- `IPPL_ENABLE_FFT`, default `OFF`
+  - If `IPPL_ENABLE_FFT` is set, `Heffte_ENABLE_CUDA` will default to `ON` if `IPPL_PLATFORMS` contains `cuda`
   - Otherwise, `Heffte_ENABLE_AVX2` is enabled. FFTW has to be enabled explicitly.
 - `Heffte_ENABLE_FFTW`, default `OFF` 
-- `ENABLE_TESTS`, default `OFF`
-- `ENABLE_UNIT_TESTS`, default `OFF`
-- `ENABLE_ALPINE`, default `OFF`
+- `IPPL_ENABLE_TESTS`, default `OFF`
+- `IPPL_ENABLE_UNIT_TESTS`, default `OFF`
+- `IPPL_ENABLE_ALPINE`, default `OFF`
 - `USE_ALTERNATIVE_VARIANT`, default `OFF`. Can turned on for GPU builds where the use of the system-provided variant doesn't work.  
-
+- `IPPL_ENABLE_SANITIZER, default `OFF`
+- 
 Furthermore, be aware of `CMAKE_BUILD_TYPE`, which can be either
 - `Release` for optimized builds
 - `RelWithDebInfo` for optimized builds with debug info (default)
@@ -59,25 +61,73 @@ cd build
 ```
 #### Serial debug build with tests and newest Kokkos
 ```
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=20 -DENABLE_TESTS=True -DKokkos_VERSION=4.2.00
+cmake .. \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_CXX_STANDARD=20 \
+    -DIPPL_ENABLE_TESTS=True \
+    -DKokkos_VERSION=4.2.00
 ```
 #### OpenMP release build with alpine and FFTW
 ```
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=20 -DENABLE_FFT=ON -DENABLE_SOLVERS=ON -DENABLE_ALPINE=True -DENABLE_TESTS=ON -DIPPL_PLATFORMS=openmp -DHeffte_ENABLE_FFTW=True
+cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_STANDARD=20 \
+    -DIPPL_ENABLE_FFT=ON \
+    -DIPPL_ENABLE_SOLVERS=ON \
+    -DIPPL_ENABLE_ALPINE=True \
+    -DIPPL_ENABLE_TESTS=ON \
+    -DIPPL_PLATFORMS=openmp \
+    -DHeffte_ENABLE_FFTW=True
 ```
 #### Cuda alpine release build 
 ```
-cmake .. -DCMAKE_BUILD_TYPE=Release -DKokkos_ARCH_[architecture]=ON -DCMAKE_CXX_STANDARD=20 -DENABLE_FFT=ON -DENABLE_TESTS=ON -DUSE_ALTERNATIVE_VARIANT=ON -DENABLE_SOLVERS=ON -DENABLE_ALPINE=True -DIPPL_PLATFORMS=cuda
+cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DKokkos_ARCH_[architecture]=ON \
+    -DCMAKE_CXX_STANDARD=20 \
+    -DIPPL_ENABLE_FFT=ON \
+    -DIPPL_ENABLE_TESTS=ON \
+    -DUSE_ALTERNATIVE_VARIANT=ON \
+    -DIPPL_ENABLE_SOLVERS=ON \
+    -DIPPL_ENABLE_ALPINE=True \
+    -DIPPL_PLATFORMS=cuda
 ```
+#### HIP release build (LUMI) 
+```
+cmake .. \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_CXX_STANDARD=20 \
+      -DCMAKE_CXX_COMPILER=hipcc \
+      -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_HIP_ARCHITECTURES=gfx90a \
+      -DCMAKE_HIP_FLAGS=--offload-arch=gfx90a \
+      -DKokkos_ENABLE_DEBUG_BOUNDS_CHECK=ON \
+      -DKokkos_ENABLE_DEBUG=OFF \
+      -DKokkos_ARCH_ZEN3=ON \
+      -DKokkos_ARCH_AMD_GFX90A=ON \
+      -DKokkos_ENABLE_HIP=ON \
+      -DIPPL_PLATFORMS="HIP;OPENMP" \
+      -DIPPL_ENABLE_TESTS=ON \
+      -DIPPL_ENABLE_FFT=ON  \
+      -DIPPL_ENABLE_SOLVERS=ON \
+      -DIPPL_ENABLE_ALPINE=OFF \
+      -DHeffte_ENABLE_ROCM=ON\
+      -DHeffte_ENABLE_GPU_AWARE_MPI=ON \
+      -DCMAKE_EXE_LINKER_FLAGS="-L/opt/cray/pe/mpich/8.1.28/ofi/amd/5.0/lib -L/opt/cray/pe/mpich/8.1.28/gtl/lib -L/opt/cray/pe/libsci/24.03.0/AMD/5.0/x86_64/lib -L/opt/cray/pe/dsmml/0.3.0/dsmml
+/lib -L/opt/cray/xpmem/2.8.2-1.0_5.1__g84a27a5.shasta/lib64 -lsci_amd_mpi -lsci_amd -ldl -lmpi_amd -lmpi_gtl_hsa -ldsmml -lxpmem -L/opt/rocm-6.0.3/lib/lib -L/opt/rocm-6.0.3/lib/lib64 -L/opt/roc
+m-6.0.3/lib/llvm/lib"
+```
+
+
 `[architecture]` should be the target architecture, e.g.
 - `PASCAL60`
 - `PASCAL61`
 - `VOLTA70`
 - `VOLTA72`
 - `TURING75`
-- `AMPERE80`
-- `AMPERE86`
-
+- `AMPERE80` (PSI GWENDOLEN machine)
+- `AMD_GFX90A` (LUMI machine)
+- `HOPPER90` (Merlin7 GPUs)
 
 # Contributions
 We are open and welcome contributions from others. Please open an issue and a corresponding pull request in the main repository if it is a bug fix or a minor change.
@@ -108,4 +158,80 @@ take a look at this [page](https://github.com/IPPL-framework/ippl/blob/master/UN
   year={2024},
   organization={SIAM}
 }
+```
+
+# Job scripts for running on Merlin and Gwendolen (at PSI)
+You can use the following example job scripts to run on the local PSI computing cluster, which uses slurm.
+More documentation on the local cluster can be found [here](https://lsm-hpce.gitpages.psi.ch/merlin6/introduction.html) (need to be in the PSI network to access).
+
+## Merlin CPU (MPI + OpenMP)
+For example, to run a job on 1 MPI node, with 44 OpenMP threads:
+```
+#!/bin/bash
+#SBATCH --partition=hourly      # Using 'hourly' will grant higher priority
+#SBATCH --nodes=1               # No. of nodes
+#SBATCH --ntasks-per-node=1     # No. of MPI ranks per node. Merlin CPU nodes have 44 cores
+#SBATCH --cpus-per-task=44      # No. of OMP threads
+#SBATCH --time=00:05:00         # Define max time job will run (e.g. here 5 mins)
+#SBATCH --hint=nomultithread    # Without hyperthreading
+##SBATCH --exclusive            # The allocations will be exclusive if turned on (remove extra hashtag to turn on)
+
+#SBATCH --output=<output_file_name>.out  # Name of output file
+#SBATCH --error=<error_file_name>.err    # Name of error file
+
+export OMP_NUM_THREADS=44
+export OMP_PROC_BIND=spread
+export OMP_PLACES=threads
+
+# need to pass the --cpus-per-task option to srun otherwise will not use more than 1 core per task
+# (see https://lsm-hpce.gitpages.psi.ch/merlin6/known-problems.html#sbatch-using-one-core-despite-setting--ccpus-per-task)
+
+srun --cpus-per-task=44 ./<your_executable> <args>
+```
+
+## Gwendolen GPU
+For example, to run a job on 4 GPUs (max on Gwendolen is 8 GPUs, which are all on a single node):
+```
+#!/bin/bash
+#SBATCH --time=00:05:00         # Define max time job will run (e.g. here 5 mins)
+#SBATCH --nodes=1               # No. of nodes (there is only 1 node on Gwendolen)
+#SBATCH --ntasks=4              # No. of tasks (max. 8)
+#SBATCH --clusters=gmerlin6     # Specify that we are running on the GPU cluster
+#SBATCH --partition=gwendolen   # Running on the Gwendolen partition of the GPU cluster
+#SBATCH --account=gwendolen
+##SBATCH --exclusive            # The allocations will be exclusive if turned on (remove extra hashtag to turn on)
+#SBATCH --gpus=4                # No. of GPUs (max. 8)
+
+#SBATCH --output=<output_file_name>.out  # Name of output file
+#SBATCH --error=<error_file_name>.err    # Name of error file
+
+srun ./<your_executable> <args> --kokkos-map-device-id-by=mpi_rank
+```
+## LUMI GPU partition
+For example, to run a job on 8 nodes with 8 GPUs each:
+```
+#!/bin/bash
+#SBATCH --job-name=TestGaussian
+#SBATCH --error=TestGaussian-%j.error
+#SBATCH --output=TestGaussian-%j.out
+#SBATCH --partition=dev-g  # partition name
+#SBATCH --time=00:10:00
+#SBATCH --nodes 8
+#SBATCH --ntasks-per-node=8     # 8 MPI ranks per node, 64 total (8x8)
+#SBATCH --gpus-per-node=8       # Allocate one gpu per MPI rank per node
+#SBATCH --account=project_xxx
+#SBATCH --hint=nomultithread
+module load  LUMI/24.03 partition/G cpeAMD rocm buildtools/24.03
+CPU_BIND="map_cpu:49,57,17,25,1,9,33,41"
+export MPICH_GPU_SUPPORT_ENABLED=1
+ulimit -s unlimited
+export EXE_DIR=/users/adelmann/sandbox/vico-paper/build/test/solver
+cat << EOF > select_gpu
+#!/bin/bash
+export ROCR_VISIBLE_DEVICES=\$SLURM_LOCALID
+exec \$*
+EOF
+chmod +x ./select_gpu
+srun ./select_gpu ${EXE_DIR}/TestGaussian 1024 1024 1024 pencils a2av no-reorder HOCKNEY --info 5
+rm -rf ./select_gpu
 ```
