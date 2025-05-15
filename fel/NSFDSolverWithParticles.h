@@ -1,6 +1,8 @@
 #ifndef NSFDSOLVERWITHPARTICLES_H
 #define NSFDSOLVERWITHPARTICLES_H
+//#include "MaxwellSolvers/NonStandardFDTDSolver.h"
 #include "MaxwellSolvers/FDTD.h"
+
 namespace ippl{
     template <typename _scalar, class PLayout>
     struct Bunch : public ippl::ParticleBase<PLayout> {
@@ -10,14 +12,13 @@ namespace ippl{
         Bunch(PLayout& playout)
             : ippl::ParticleBase<PLayout>(playout) {
             // Add attributes to the particle bunch
-            this->addAttribute(Q);     // Charge attribute
-            this->addAttribute(mass);  // Mass attribute
-            this->addAttribute(
-                gamma_beta);  // Gamma-beta attribute (product of relativistiv gamma and beta)
-            this->addAttribute(R_np1);     // Position attribute for the next time step
-            this->addAttribute(R_nm1);     // Position attribute for the next time step
-            this->addAttribute(E_gather);  // Electric field attribute for particle gathering
-            this->addAttribute(B_gather);  // Magnedit field attribute for particle gathering
+            this->addAttribute(Q);          // Charge attribute
+            this->addAttribute(mass);       // Mass attribute
+            this->addAttribute(gamma_beta); // Gamma-beta attribute (product of relativistiv gamma and beta)
+            this->addAttribute(R_np1);      // Position attribute for the previous time step
+            this->addAttribute(R_nm1);      // Position attribute for the next time step
+            this->addAttribute(E_gather);   // Electric field attribute for particle gathering
+            this->addAttribute(B_gather);   // Magnedit field attribute for particle gathering
         }
 
         // Destructor for the Bunch class
@@ -30,18 +31,20 @@ namespace ippl{
         using vector4_container_type  = ippl::ParticleAttrib<ippl::Vector<scalar, 4>>;
 
         // Declare instances of the attribute containers
-        charge_container_type Q;             // Charge container
-        charge_container_type mass;          // Mass container
-        velocity_container_type gamma_beta;  // Gamma-beta container
+        charge_container_type Q;            // Charge container
+        charge_container_type mass;         // Mass container
+        velocity_container_type gamma_beta; // Gamma-beta container
         typename ippl::ParticleBase<PLayout>::particle_position_type
-            R_np1;  // Position container for the next time step
+            R_np1;      // Position container for the next time step
         typename ippl::ParticleBase<PLayout>::particle_position_type
-            R_nm1;  // Position container for the previous time step
+            R_nm1;      // Position container for the previous time step
         ippl::ParticleAttrib<ippl::Vector<scalar, 3>>
             E_gather;  // Electric field container for particle gathering
         ippl::ParticleAttrib<ippl::Vector<scalar, 3>>
             B_gather;  // Magnetic field container for particle gathering
     };
+
+
     template <typename T>
     KOKKOS_INLINE_FUNCTION Kokkos::pair<ippl::Vector<int, 3>, ippl::Vector<T, 3>> gridCoordinatesOf(
         const ippl::Vector<T, 3> hr, const ippl::Vector<T, 3> origin, ippl::Vector<T, 3> pos, int nghost = 1) {
@@ -116,13 +119,14 @@ namespace ippl{
                 weight *= ((i & (1 << d)) ? fracpos[d] : one_minus_fracpos[d]);
                 ipos_l[d] += !!(i & (1 << d));
             }
-            assert_isreal(value);
-            assert_isreal(weight);
+            assert(!Kokkos::isnan(value) && !Kokkos::isinf(value));
+            assert(!Kokkos::isnan(weight) && !Kokkos::isinf(weight));
             accum += weight;
             Kokkos::atomic_add(&(view(ipos_l[0], ipos_l[1], ipos_l[2])[0]), value * weight);
         }
         assert(abs(accum - 1.0f) < 1e-6f);
     }
+
     template <typename view_type, typename scalar>
     KOKKOS_FUNCTION void scatterToGrid(const ippl::NDIndex<3>& ldom, view_type& view,
                                        ippl::Vector<scalar, 3> hr, ippl::Vector<scalar, 3> orig,
@@ -158,7 +162,7 @@ namespace ippl{
                 weight *= ((i & (1 << d)) ? fracpos[d] : one_minus_fracpos[d]);
                 ipos_l[d] += !!(i & (1 << d));
             }
-            assert_isreal(weight);
+            assert(!Kokkos::isnan(weight) && !Kokkos::isinf(weight));;
             accum += weight;
             Kokkos::atomic_add(&(view(ipos_l[0], ipos_l[1], ipos_l[2])[1]), value[0] * weight);
             Kokkos::atomic_add(&(view(ipos_l[0], ipos_l[1], ipos_l[2])[2]), value[1] * weight);
@@ -166,6 +170,7 @@ namespace ippl{
         }
         assert(abs(accum - 1.0f) < 1e-6f);
     }
+
     template <typename view_type, typename scalar>
     KOKKOS_INLINE_FUNCTION void scatterLineToGrid(const ippl::NDIndex<3>& ldom, view_type& Jview,
                                                   ippl::Vector<scalar, 3> hr,
@@ -204,16 +209,17 @@ namespace ippl{
         scatterToGrid(ldom, Jview, hr, origin, ippl::Vector<scalar, 3>((relay + to) * scalar(0.5)),
                       ippl::Vector<scalar, 3>((to - relay) * factor));
     }
+
     template <typename scalar, fdtd_bc boundary_conditions>
     class NSFDSolverWithParticles {
     public:
         constexpr static unsigned dim = 3;
         using vector_type             = ippl::Vector<scalar, 3>;
         using vector4_type            = ippl::Vector<scalar, 4>;
-        using FourField =
+        using SourceField =
             ippl::Field<vector4_type, dim, ippl::UniformCartesian<scalar, dim>,
                         typename ippl::UniformCartesian<scalar, dim>::DefaultCentering>;
-        using ThreeField =
+        using EMField =
             ippl::Field<vector_type, dim, ippl::UniformCartesian<scalar, dim>,
                         typename ippl::UniformCartesian<scalar, dim>::DefaultCentering>;
         using playout_type = ParticleSpatialLayout<scalar, 3>;
@@ -223,10 +229,10 @@ namespace ippl{
         Mesh_t* mesh_mp;
         playout_type playout;
         Bunch<scalar, ParticleSpatialLayout<scalar, 3>> particles;
-        FourField J;
-        ThreeField E;
-        ThreeField B;
-        NonStandardFDTDSolver<ThreeField, FourField, absorbing> field_solver;
+        SourceField J;
+        EMField E;
+        EMField B;
+        NonStandardFDTDSolver<EMField, SourceField, absorbing> field_solver;
 
         ippl::Vector<uint32_t, 3> nr_global;
         ippl::Vector<scalar, 3> hr_m;
@@ -252,8 +258,9 @@ namespace ippl{
         void scatterBunch() {
             auto hr_m           = mesh_mp->getMeshSpacing();
             const scalar volume = hr_m[0] * hr_m[1] * hr_m[2];
-            assert_isreal(volume);
-            assert_isreal((scalar(1) / volume));
+            assert(!Kokkos::isnan(volume) && !Kokkos::isinf(volume));
+            assert(!Kokkos::isnan((scalar(1) / volume)) && !Kokkos::isinf((scalar(1) / volume)));
+            
             J                       = typename decltype(J)::value_type(0);
             auto Jview              = J.getView();
             auto qview              = particles.Q.getView();

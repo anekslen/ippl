@@ -841,14 +841,14 @@ size_t initialize_bunch_mithra(bunch_type& bunch, const BunchInitialize<scalar>&
     Kokkos::View<ippl::Vector<scalar, 3>*, Kokkos::HostSpace> gammabetas("", temporary_charge_list.size());
     auto iterQ = temporary_charge_list.begin();
     for (size_t i = 0; i < temporary_charge_list.size(); i++) {
-        assert_isreal(iterQ->gb[0]);
-        assert_isreal(iterQ->gb[1]);
-        assert_isreal(iterQ->gb[2]);
+        assert(!Kokkos::isnan(iterQ->gb[0]) && !Kokkos::isinf(iterQ->gb[0]));
+        assert(!Kokkos::isnan(iterQ->gb[1]) && !Kokkos::isinf(iterQ->gb[1]));
+        assert(!Kokkos::isnan(iterQ->gb[2]) && !Kokkos::isinf(iterQ->gb[2]));
         assert(iterQ->gb[2] != 0.0f);
         scalar g = std::sqrt(1.0 + iterQ->gb.squaredNorm());
-        assert_isreal(g);
+        assert(!Kokkos::isnan(g) && !Kokkos::isinf(g));
         scalar bz = iterQ->gb[2] / g;
-        assert_isreal(bz);
+        assert(!Kokkos::isnan(bz) && !Kokkos::isinf(bz));
         (void)bz;
         positions(i)  = iterQ->rnp;
         gammabetas(i) = iterQ->gb;
@@ -957,8 +957,8 @@ KOKKOS_FUNCTION void scatterToGrid(const ippl::NDIndex<3>& ldom, view_type& view
             weight *= ((i & (1 << d)) ? fracpos[d] : one_minus_fracpos[d]);
             ipos_l[d] += !!(i & (1 << d));
         }
-        assert_isreal(value);
-        assert_isreal(weight);
+        assert(!Kokkos::isnan(value) && !Kokkos::isinf(value));
+        assert(!Kokkos::isnan(weight) && !Kokkos::isinf(weight));
         accum += weight;
         Kokkos::atomic_add(&(view(ipos_l[0], ipos_l[1], ipos_l[2])[0]), value * weight);
     }
@@ -999,7 +999,7 @@ KOKKOS_FUNCTION void scatterToGrid(const ippl::NDIndex<3>& ldom, view_type& view
             weight *= ((i & (1 << d)) ? fracpos[d] : one_minus_fracpos[d]);
             ipos_l[d] += !!(i & (1 << d));
         }
-        assert_isreal(weight);
+        assert(!Kokkos::isnan(weight) && !Kokkos::isinf(weight));
         accum += weight;
         Kokkos::atomic_add(&(view(ipos_l[0], ipos_l[1], ipos_l[2])[1]), value[0] * weight);
         Kokkos::atomic_add(&(view(ipos_l[0], ipos_l[1], ipos_l[2])[2]), value[1] * weight);
@@ -1110,10 +1110,10 @@ namespace ippl {
         bool periodic_bc; ///< Flag indicating if periodic boundary conditions are used.
 
         /// Type alias for a field with 4D vector values.
-        using FourField = ippl::Field<value_type, dim, ippl::UniformCartesian<scalar, dim>, typename ippl::UniformCartesian<scalar, dim>::DefaultCentering>;
+        using SourceField = ippl::Field<value_type, dim, ippl::UniformCartesian<scalar, dim>, typename ippl::UniformCartesian<scalar, dim>::DefaultCentering>;
 
         /// Type alias for a field with 3D vector values.
-        using ThreeField = ippl::Field<Vector_t, dim, ippl::UniformCartesian<scalar, dim>, typename ippl::UniformCartesian<scalar, dim>::DefaultCentering>;
+        using EMField = ippl::Field<Vector_t, dim, ippl::UniformCartesian<scalar, dim>, typename ippl::UniformCartesian<scalar, dim>::DefaultCentering>;
 
         /// Type alias for a field with 4D vector values (repeated for consistency).
         using VField_t = ippl::Field<value_type, dim, ippl::UniformCartesian<scalar, dim>, typename ippl::UniformCartesian<scalar, dim>::DefaultCentering>;
@@ -1128,10 +1128,10 @@ namespace ippl {
         using ev_view_type = typename EBField_t::view_type;
 
         /// Type alias for the view type of a field with 3D vector values (electric field).
-        using e_view_type = typename ThreeField::view_type;
+        using e_view_type = typename EMField::view_type;
 
         /// Type alias for the view type of a field with 3D vector values (magnetic field).
-        using b_view_type = typename ThreeField::view_type;
+        using b_view_type = typename EMField::view_type;
 
         /// Solver and particle handler.
         ippl::NSFDSolverWithParticles<scalar, absorbing> fieldsAndParticles;
@@ -1158,7 +1158,7 @@ namespace ippl {
          * @param cfg Configuration object.
          */
         FELSimulationState(FieldLayout<dim>& layout, Mesh_t& mesch, size_t nparticles, config cfg) 
-            : fieldsAndParticles(layout, mesch, nparticles), 
+            : fieldsAndParticles(layout, mesch, nparticles),
               m_config(cfg), 
               ulb(UniaxialLorentzframe<scalar, 2>::from_gamma(cfg.bunch_gamma / std::sqrt(1 + cfg.undulator_K * cfg.undulator_K * 0.5))), 
               uparams(cfg.undulator_K, cfg.undulator_period, cfg.undulator_length), 
@@ -1415,7 +1415,7 @@ int main(int argc, char* argv[]) {
         // test_gauss_law<scalar>(64);
         // test_amperes_law<scalar>(64);
         // goto exit;
-        config cfg               = read_config("../../config.json");
+        config cfg               = read_config("../../fel/config.json");
         const scalar frame_gamma = std::max(
             decltype(cfg)::scalar(1),
             cfg.bunch_gamma
@@ -1450,11 +1450,11 @@ int main(int argc, char* argv[]) {
         std::cout << "hx: " << hx << "\n";
         std::cout << "origin: " << origin << "\n";
         std::cout << "extents: " << cfg.extents << std::endl;
-        if (sq(hx[2] / hx[0]) + sq(hx[2] / hx[1]) >= 1) {
+        if (Kokkos::pow(hx[2] / hx[0], 2) + Kokkos::pow(hx[2] / hx[1], 2) >= 1) {
             std::cerr << "Dispersion relation not satisfiable\n";
             abort();
         }
-
+        
         ippl::FELSimulationState<scalar> fdtd_state(
             layout, mesh, 0 /*no resize function exists wtf cfg.num_particles*/, cfg);
 

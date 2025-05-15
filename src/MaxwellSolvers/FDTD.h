@@ -23,16 +23,16 @@ namespace ippl {
         absorbing
     };
 
-    template <typename EMField, typename FourField, fdtd_bc boundary_conditions = periodic>
-    class StandardFDTDSolver : Maxwell<EMField, FourField> {
+    template <typename EMField, typename SourceField, fdtd_bc boundary_conditions = periodic>
+    class StandardFDTDSolver : Maxwell<EMField, SourceField> {
     public:
         constexpr static unsigned Dim = EMField::dim;
         using scalar                  = typename EMField::value_type::value_type;
         using Vector_t                = Vector<typename EMField::value_type::value_type, Dim>;
-        using FourVector_t            = typename FourField::value_type;
-        StandardFDTDSolver(FourField& source, EMField& E, EMField& B) {
-            Maxwell<EMField, FourField>::setSource(source);
-            Maxwell<EMField, FourField>::setEMFields(E, B);
+        using FourVector_t            = typename SourceField::value_type;
+        StandardFDTDSolver(SourceField& source, EMField& E, EMField& B) {
+            Maxwell<EMField, SourceField>::setSources(source);
+            Maxwell<EMField, SourceField>::setEMFields(E, B);
             initialize();
         }
         virtual void solve() override {
@@ -42,9 +42,9 @@ namespace ippl {
         }
         void setPeriodicBoundaryConditions() {
             periodic_bc = true;
-            typename FourField::BConds_t vector_bcs;
+            typename SourceField::BConds_t vector_bcs;
             auto bcsetter_single = [&vector_bcs]<size_t Idx>(const std::index_sequence<Idx>&) {
-                vector_bcs[Idx] = std::make_shared<ippl::PeriodicFace<FourField>>(Idx);
+                vector_bcs[Idx] = std::make_shared<ippl::PeriodicFace<SourceField>>(Idx);
                 return 0;
             };
             auto bcsetter = [bcsetter_single]<size_t... Idx>(const std::index_sequence<Idx...>&) {
@@ -57,9 +57,9 @@ namespace ippl {
             A_nm1.setFieldBC(vector_bcs);
         }
 
-        FourField A_n;
-        FourField A_np1;
-        FourField A_nm1;
+        SourceField A_n;
+        SourceField A_np1;
+        SourceField A_nm1;
         scalar dt;
 
     private:
@@ -88,7 +88,7 @@ namespace ippl {
             const auto aview       = A_n.getView();
             const auto anp1view    = A_np1.getView();
             const auto anm1view    = A_nm1.getView();
-            const auto source_view = Maxwell<EMField, FourField>::source_mp->getView();
+            const auto source_view = Maxwell<EMField, SourceField>::JN_mp->getView();
 
             const scalar a1 =
                 scalar(2) * (scalar(1) - sq(dt / hr_m[0]) - sq(dt / hr_m[1]) - sq(dt / hr_m[2]));
@@ -135,9 +135,9 @@ namespace ippl {
             const scalar idt                          = scalar(1.0) / dt;
             auto A_np1 = this->A_np1.getView(), A_n = this->A_n.getView(),
                  A_nm1  = this->A_nm1.getView();
-            auto source = Maxwell<EMField, FourField>::source_mp->getView();
-            auto Eview  = Maxwell<EMField, FourField>::En_mp->getView();
-            auto Bview  = Maxwell<EMField, FourField>::Bn_mp->getView();
+            auto source = Maxwell<EMField, SourceField>::JN_mp->getView();
+            auto Eview  = Maxwell<EMField, SourceField>::En_mp->getView();
+            auto Bview  = Maxwell<EMField, SourceField>::Bn_mp->getView();
 
             Kokkos::parallel_for(
                 this->A_n.getFieldRangePolicy(), KOKKOS_LAMBDA(size_t i, size_t j, size_t k) {
@@ -164,7 +164,7 @@ namespace ippl {
 
         bool periodic_bc;
 
-        typename FourField::Mesh_t* mesh_mp;
+        typename SourceField::Mesh_t* mesh_mp;
         FieldLayout<Dim>* layout_mp;
         NDIndex<Dim> domain_m;
         Vector_t hr_m;
@@ -173,8 +173,8 @@ namespace ippl {
 
         void initialize() {
             // get layout and mesh
-            layout_mp = &(this->source_mp->getLayout());
-            mesh_mp   = &(this->source_mp->get_mesh());
+            layout_mp = &(this->JN_mp->getLayout());
+            mesh_mp   = &(this->JN_mp->get_mesh());
 
             // get mesh spacing, domain, and mesh size
             hr_m = mesh_mp->getMeshSpacing();
@@ -200,38 +200,39 @@ namespace ippl {
      * @brief Nonstandard Finite-Difference Time-Domain
      *
      * @tparam EMField
-     * @tparam FourField
+     * @tparam SourceField
      */
-    template <typename EMField, typename FourField, fdtd_bc boundary_conditions = periodic>
-    class NonStandardFDTDSolver : Maxwell<EMField, FourField> {
+    template <typename EMField, typename SourceField, fdtd_bc boundary_conditions = periodic>
+    class NonStandardFDTDSolver : Maxwell<EMField, SourceField> {
     public:
         constexpr static unsigned Dim = EMField::dim;
         using scalar                  = typename EMField::value_type::value_type;
         using Vector_t                = Vector<typename EMField::value_type::value_type, Dim>;
-        using FourVector_t            = typename FourField::value_type;
-        NonStandardFDTDSolver(FourField& source, EMField& E, EMField& B) {
+        using FourVector_t            = typename SourceField::value_type;
+        NonStandardFDTDSolver(SourceField& source, EMField& E, EMField& B) {
             auto hx = source.get_mesh().getMeshSpacing();
             if ((hx[2] / hx[0]) * (hx[2] / hx[0]) + (hx[2] / hx[1]) * (hx[2] / hx[1]) >= 1) {
                 std::cerr << "Dispersion-free CFL condition not satisfiable\n";
                 std::abort();
             }
-            Maxwell<EMField, FourField>::setSource(source);
-            Maxwell<EMField, FourField>::setEMFields(E, B);
+            Maxwell<EMField, SourceField>::setSources(source);
+            Maxwell<EMField, SourceField>::setEMFields(E, B);
             initialize();
+            std::cout << "Bla" << std::endl;
         }
         virtual void solve() override {
             step();
             timeShift();
             evaluate_EB();
         }
-        FourField A_n;
-        FourField A_np1;
-        FourField A_nm1;
+        SourceField A_n;
+        SourceField A_np1;
+        SourceField A_nm1;
         void setPeriodicBoundaryConditions() {
             periodic_bc = true;
-            typename FourField::BConds_t vector_bcs;
+            typename SourceField::BConds_t vector_bcs;
             auto bcsetter_single = [&vector_bcs]<size_t Idx>(const std::index_sequence<Idx>&) {
-                vector_bcs[Idx] = std::make_shared<ippl::PeriodicFace<FourField>>(Idx);
+                vector_bcs[Idx] = std::make_shared<ippl::PeriodicFace<SourceField>>(Idx);
                 return 0;
             };
             auto bcsetter = [bcsetter_single]<size_t... Idx>(const std::index_sequence<Idx...>&) {
@@ -279,7 +280,7 @@ namespace ippl {
             const auto aview       = A_n.getView();
             const auto anp1view    = A_np1.getView();
             const auto anm1view    = A_nm1.getView();
-            const auto source_view = Maxwell<EMField, FourField>::source_mp->getView();
+            const auto source_view = Maxwell<EMField, SourceField>::JN_mp->getView();
 
             const scalar calA = 0.25 * (1 + 0.02 / (sq(hr_m[2] / hr_m[0]) + sq(hr_m[2] / hr_m[1])));
             nondispersive<scalar> ndisp{
@@ -335,15 +336,15 @@ namespace ippl {
             applyBCs();
         }
         void evaluate_EB() {
-            *(Maxwell<EMField, FourField>::En_mp)     = typename EMField::value_type(0);
-            *(Maxwell<EMField, FourField>::Bn_mp)     = typename EMField::value_type(0);
+            *(Maxwell<EMField, SourceField>::En_mp)     = typename EMField::value_type(0);
+            *(Maxwell<EMField, SourceField>::Bn_mp)     = typename EMField::value_type(0);
             ippl::Vector<scalar, 3> inverse_2_spacing = ippl::Vector<scalar, 3>(0.5) / hr_m;
             const scalar idt                          = scalar(1.0) / dt;
             auto A_np1 = this->A_np1.getView(), A_n = this->A_n.getView(),
                  A_nm1  = this->A_nm1.getView();
-            auto source = Maxwell<EMField, FourField>::source_mp->getView();
-            auto Eview  = Maxwell<EMField, FourField>::En_mp->getView();
-            auto Bview  = Maxwell<EMField, FourField>::Bn_mp->getView();
+            auto source = Maxwell<EMField, SourceField>::JN_mp->getView();
+            auto Eview  = Maxwell<EMField, SourceField>::En_mp->getView();
+            auto Bview  = Maxwell<EMField, SourceField>::Bn_mp->getView();
 
             Kokkos::parallel_for(
                 this->A_n.getFieldRangePolicy(), KOKKOS_LAMBDA(size_t i, size_t j, size_t k) {
@@ -368,7 +369,7 @@ namespace ippl {
             Kokkos::fence();
         }
 
-        typename FourField::Mesh_t* mesh_mp;
+        typename SourceField::Mesh_t* mesh_mp;
         FieldLayout<Dim>* layout_mp;
         NDIndex<Dim> domain_m;
         Vector_t hr_m;
@@ -378,8 +379,8 @@ namespace ippl {
 
         void initialize() {
             // get layout and mesh
-            layout_mp = &(this->source_mp->getLayout());
-            mesh_mp   = &(this->source_mp->get_mesh());
+            layout_mp = &(this->JN_mp->getLayout());
+            mesh_mp   = &(this->JN_mp->get_mesh());
 
             // get mesh spacing, domain, and mesh size
             hr_m     = mesh_mp->getMeshSpacing();
