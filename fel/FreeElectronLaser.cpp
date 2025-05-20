@@ -390,7 +390,7 @@ config read_config(const char* filepath) {
                                * lmult / unit_length_in_meters;
     ret.sigma_momentum = getVector<config::scalar, 3>(j["bunch"]["sigma-momentum"]);
     ret.output_rhythm  = j["output"].contains("rhythm") ? uint32_t(j["output"]["rhythm"]) : 0;
-    ret.output_path    = "../data/";
+    ret.output_path    = "./data/";
     if (j["output"].contains("path")) {
         ret.output_path = j["output"]["path"];
         if (!ret.output_path.ends_with('/')) {
@@ -1217,7 +1217,6 @@ bool writeBMPToFD(FILE* fd, int width, int height, const unsigned char* data) {
             fd, width, height, channels, flippedData.data())) {
         return false;
     }
-
     return true;
 }
 /**
@@ -1412,8 +1411,8 @@ int main(int argc, char* argv[]) {
     using scalar = float;
     ippl::initialize(argc, argv);
     {
-        // test_gauss_law<scalar>(64);
-        // test_amperes_law<scalar>(64);
+        test_gauss_law<scalar>(64);
+        test_amperes_law<scalar>(64);
         // goto exit;
         config cfg               = read_config("../../fel/config.json");
         const scalar frame_gamma = std::max(

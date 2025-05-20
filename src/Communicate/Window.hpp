@@ -28,7 +28,7 @@ namespace ippl {
                 count_m       = std::distance(first, last);
                 int dispUnit  = sizeof(typename Iter::value_type);
                 MPI_Aint size = (MPI_Aint)count_m * dispUnit;
-                MPI_Win_create(&(*first), size, dispUnit, MPI_INFO_NULL, comm, &win_m);
+                //MPI_Win_create(&(*first), size, dispUnit, MPI_INFO_NULL, comm, &win_m);
 
                 return allocated_m;
             }
