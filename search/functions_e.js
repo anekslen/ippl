@@ -20,7 +20,7 @@ var searchData=
   ['periodicface_17',['PeriodicFace',['../classippl_1_1PeriodicFace.html#af6740f60a62d3b55eb1633d9ab6e128b',1,'ippl::PeriodicFace']]],
   ['perpendicularreduction_18',['perpendicularReduction',['../classippl_1_1OrthogonalRecursiveBisection.html#a55ed2713ea83c9351d994ebbd90d224a',1,'ippl::OrthogonalRecursiveBisection']]],
   ['picmanager_19',['PicManager',['../classippl_1_1PicManager.html#a5873cc6aaacb3283c276a48aace69a1f',1,'ippl::PicManager']]],
-  ['pnorm_20',['Pnorm',['../classippl_1_1Vector.html#a5920f209fcf2445ea5a1459d065eab80',1,'ippl::Vector']]],
+  ['pnorm_20',['Pnorm',['../classippl_1_1Vector.html#a1343b827c4c814a4f2fa84cf291fc255',1,'ippl::Vector']]],
   ['poisson_21',['Poisson',['../classippl_1_1Poisson.html#a2cd2417480ea384dc27ede6653f2cc1b',1,'ippl::Poisson']]],
   ['poisson_22',['poisson',['../namespaceippl.html#a2c95409fedc05b2874e2c9da4f309645',1,'ippl']]],
   ['poisson_23',['Poisson',['../classippl_1_1Poisson.html#a07c4840069a73f2d00cc8be58e3a2839',1,'ippl::Poisson']]],
