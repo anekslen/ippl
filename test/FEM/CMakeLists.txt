@@ -13,6 +13,9 @@ link_directories (
 set (IPPL_LIBS ippl)
 set (COMPILE_FLAGS ${OPAL_CXX_FLAGS})
 
+# Add FEMContainer directory
+add_subdirectory(FEMContainer)
+
 # FEM Space tests
 
 add_executable (TestLagrangeSpace1D TestLagrangeSpace1D.cpp)

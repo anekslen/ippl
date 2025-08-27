@@ -36,6 +36,10 @@ install(FILES
     LagrangeSpace.h
     LagrangeSpace.hpp
 
+    # Degrees of Freedom
+    FEMContainer.h
+    FEMContainer.hpp
+
     DESTINATION include/FEM
 )
 
