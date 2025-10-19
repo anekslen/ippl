@@ -8,6 +8,7 @@ add_ippl_test(FiniteElementSpace)
 add_ippl_test(LagrangeSpace)
 add_ippl_test(Quadrature)
 add_ippl_test(GaussJacobiQuadrature)
+add_ippl_test(FEMContainerHalo)
 
 # vi: set et ts=4 sw=4 sts=4:
 

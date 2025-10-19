@@ -33,6 +33,8 @@ install(FILES
     # Spaces
     FiniteElementSpace.h
     FiniteElementSpace.hpp
+    LagrangeSpaceFEMContainer.h
+    LagrangeSpaceFEMContainer.hpp
     LagrangeSpace.h
     LagrangeSpace.hpp
 
