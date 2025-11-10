@@ -35,12 +35,18 @@ install(FILES
     FiniteElementSpace.hpp
     LagrangeSpaceFEMContainer.h
     LagrangeSpaceFEMContainer.hpp
-    LagrangeSpace.h
-    LagrangeSpace.hpp
+    # LagrangeSpace.h
+    # LagrangeSpace.hpp
 
     # Degrees of Freedom
     FEMContainer.h
     FEMContainer.hpp
+
+    # Entity
+    Entity.h
+
+    # Array type
+    DOFArray.h
 
     DESTINATION include/FEM
 )
