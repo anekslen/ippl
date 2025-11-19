@@ -300,11 +300,17 @@ TYPED_TEST(HaloTest, AccumulateHalo) {
                 });
                 Kokkos::deep_copy(femVertex->template getView<EntityType>(), mirror);
             }
+        }(entity_types), ...);
+    }, femVertex->getEntityTypes());
+    
+    femVertex->fillHalo();
+    femVertex->accumulateHalo();
 
-            femVertex->fillHalo();
-            femVertex->accumulateHalo();
-
-            Kokkos::deep_copy(mirror, femVertex->template getView<EntityType>());
+    std::apply([&](auto... entity_types) {
+        ((void)[&]<typename EntityType>(EntityType) { 
+            
+            auto mirror = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), femVertex->template getView<EntityType>());
+            unsigned int nDOFs = femVertex-> template getNumDOFs<EntityType>();
 
             nestedViewLoop(mirror, nghost, [&]<typename... Idx>(const Idx... args) {
                 for(unsigned int i = 0; i < nDOFs; i++) {

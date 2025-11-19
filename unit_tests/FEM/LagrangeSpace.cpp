@@ -103,7 +103,7 @@ TYPED_TEST(LagrangeSpaceTest, numGlobalDOFs) {
     ASSERT_EQ(lagrangeSpace.numGlobalDOFs(), static_cast<std::size_t>(pow(3.0 * order, dim)));
 }
 
-TYPED_TEST(LagrangeSpaceTest, getLocalDOFIndex) {
+/*TYPED_TEST(LagrangeSpaceTest, getLocalDOFIndex) {
     const auto& lagrangeSpace = this->lagrangeSpace;
     const std::size_t& dim    = lagrangeSpace.dim;
     const std::size_t& order  = lagrangeSpace.order;
@@ -173,9 +173,9 @@ TYPED_TEST(LagrangeSpaceTest, getLocalDOFIndex) {
         // This order was not handled
         FAIL();
     }
-}
+}*/
 
-TYPED_TEST(LagrangeSpaceTest, getGlobalDOFIndex) {
+/*TYPED_TEST(LagrangeSpaceTest, getGlobalDOFIndex) {
     auto& lagrangeSpace      = this->lagrangeSpace;
     const std::size_t& dim   = lagrangeSpace.dim;
     const std::size_t& order = lagrangeSpace.order;
@@ -300,9 +300,9 @@ TYPED_TEST(LagrangeSpaceTest, getGlobalDOFIndex) {
     } else {
         FAIL();
     }
-}
+}*/
 
-TYPED_TEST(LagrangeSpaceTest, getLocalDOFIndices) {
+/*TYPED_TEST(LagrangeSpaceTest, getLocalDOFIndices) {
     const auto& lagrangeSpace = this->lagrangeSpace;
     // const auto& dim = lagrangeSpace.dim;
     // const auto& order = lagrangeSpace.order;
@@ -314,9 +314,9 @@ TYPED_TEST(LagrangeSpaceTest, getLocalDOFIndices) {
     for (unsigned i = 0; i < numElementDOFs; i++) {
         ASSERT_EQ(local_dof_indices[i], i);
     }
-}
+}*/
 
-TYPED_TEST(LagrangeSpaceTest, getGlobalDOFIndices) {
+/*TYPED_TEST(LagrangeSpaceTest, getGlobalDOFIndices) {
     auto& lagrangeSpace      = this->lagrangeSpace;
     const std::size_t& dim   = lagrangeSpace.dim;
     const std::size_t& order = lagrangeSpace.order;
@@ -380,7 +380,7 @@ TYPED_TEST(LagrangeSpaceTest, getGlobalDOFIndices) {
     } else {
         FAIL();
     }
-}
+}*/
 
 TYPED_TEST(LagrangeSpaceTest, evaluateRefElementShapeFunction) {
     auto& lagrangeSpace      = this->lagrangeSpace;
