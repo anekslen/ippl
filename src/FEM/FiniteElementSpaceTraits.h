@@ -117,7 +117,7 @@ namespace ippl {
         // All entity types for higher order
         using EntityTypes = std::tuple<
             Vertex<3>, EdgeX<3>, EdgeY<3>, EdgeZ<3>,
-            FaceXY<3>, FaceXZ<3>, FaceYZ<3>, Hexahedron<3>
+            FaceXY<3>, FaceXZ<3>, FaceYZ<3>, Hexaedron<3>
         >;
         using DOFNums = std::tuple<
             std::integral_constant<unsigned, 1>,                                       // 1 DOF per vertex

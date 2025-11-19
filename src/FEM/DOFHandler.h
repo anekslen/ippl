@@ -325,8 +325,13 @@ namespace ippl {
                 } else if constexpr (Dim == 3) {
                     faceNDIndex[2] += faceLocalIndex; // Bottom (0) or top (1) face
                 }
+            } else if constexpr (std::is_same_v<FaceType, FaceXZ<Dim>> && Dim == 3) {
+                // XZ-plane faces (3D only)
+                faceNDIndex[1] += faceLocalIndex; // Front (0) or back (1) face
+            } else if constexpr (std::is_same_v<FaceType, FaceYZ<Dim>> && Dim == 3) {
+                // YZ-plane faces (3D only)
+                faceNDIndex[0] += faceLocalIndex; // Left (0) or right (1) face
             }
-            // Add other face types as needed...
             
             return faceNDIndex;
         }

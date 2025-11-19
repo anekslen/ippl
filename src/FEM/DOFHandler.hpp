@@ -242,9 +242,9 @@ namespace ippl {
 
         // Volume DOFs (3D only)
         if constexpr (Dim == 3) {
-            if constexpr (TagIndex<EntityTypes>::template contains<Hexahedron<Dim>>()) {
-                constexpr size_t hexTypeIndex = TagIndex<EntityTypes>::template index<Hexahedron<Dim>>();
-                constexpr size_t hexDOFCount = SpaceTraits::template entityDOFCount<Hexahedron<Dim>>();
+            if constexpr (TagIndex<EntityTypes>::template contains<Hexaedron<Dim>>()) {
+                constexpr size_t hexTypeIndex = TagIndex<EntityTypes>::template index<Hexaedron<Dim>>();
+                constexpr size_t hexDOFCount = SpaceTraits::template entityDOFCount<Hexaedron<Dim>>();
 
                 Kokkos::Array<size_t, Dim> offset;
                 offset[0] = 0;
@@ -292,16 +292,6 @@ namespace ippl {
         return ndIndex;
     }
     
-    template <typename T, typename SpaceTag, unsigned Dim, unsigned Order>
-    template <typename EntityType>
-    KOKKOS_FUNCTION typename DOFHandler<T, SpaceTag, Dim, Order>::indices_t
-    DOFHandler<T, SpaceTag, Dim, Order>::getEntityNDIndex(const indices_t& elementNDIndex, const size_t& entityLocalIndex) const {
-        // TODO implement the mapping to get entity NDIndex
-    }
-
-
-
-
 }  // namespace ippl
 
 #endif  // IPPL_DOFHANDLER_HPP
