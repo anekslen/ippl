@@ -255,21 +255,32 @@ namespace ippl {
 
         /**
          * @brief Get vertex NDIndex within an element
+         * 
+         * Vertices are numbered counter-clockwise:
+         * 2D: 0:[0,0], 1:[1,0], 2:[1,1], 3:[0,1] (bottom-left, bottom-right, top-right, top-left)
+         * 3D: z=0 plane counter-clockwise, then z=1 plane counter-clockwise
          */
         KOKKOS_FUNCTION indices_t getVertexNDIndex(const indices_t& elementNDIndex, 
                                                   const size_t& vertexLocalIndex) const {
             indices_t vertexNDIndex = elementNDIndex;
             
-            // Convert vertex local index to offset
+            // Convert vertex local index to offset using counter-clockwise ordering
             if constexpr (Dim == 1) {
                 vertexNDIndex[0] += vertexLocalIndex; // 0 or 1
             } else if constexpr (Dim == 2) {
-                vertexNDIndex[0] += vertexLocalIndex & 1;        // 0,1,0,1 for vertices 0,1,2,3
-                vertexNDIndex[1] += (vertexLocalIndex >> 1) & 1; // 0,0,1,1 for vertices 0,1,2,3
+                // Counter-clockwise: 0:[0,0], 1:[1,0], 2:[1,1], 3:[0,1]
+                constexpr size_t offsets[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+                vertexNDIndex[0] += offsets[vertexLocalIndex][0];
+                vertexNDIndex[1] += offsets[vertexLocalIndex][1];
             } else if constexpr (Dim == 3) {
-                vertexNDIndex[0] += vertexLocalIndex & 1;        // 0,1,0,1,0,1,0,1 for vertices 0-7
-                vertexNDIndex[1] += (vertexLocalIndex >> 1) & 1; // 0,0,1,1,0,0,1,1 for vertices 0-7
-                vertexNDIndex[2] += (vertexLocalIndex >> 2) & 1; // 0,0,0,0,1,1,1,1 for vertices 0-7
+                // Counter-clockwise in XY at z=0, then z=1
+                constexpr size_t offsets[8][3] = {
+                    {0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0},  // z=0 plane
+                    {0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}   // z=1 plane
+                };
+                vertexNDIndex[0] += offsets[vertexLocalIndex][0];
+                vertexNDIndex[1] += offsets[vertexLocalIndex][1];
+                vertexNDIndex[2] += offsets[vertexLocalIndex][2];
             }
             
             return vertexNDIndex;
@@ -277,6 +288,8 @@ namespace ippl {
 
         /**
          * @brief Get edge NDIndex within an element
+         * 
+         * Edges are numbered counter-clockwise in the perpendicular plane.
          */
         template <typename EdgeType>
         KOKKOS_FUNCTION indices_t getEdgeNDIndex(const indices_t& elementNDIndex,
@@ -287,23 +300,30 @@ namespace ippl {
             if constexpr (std::is_same_v<EdgeType, EdgeX<Dim>>) {
                 // X-oriented edges
                 if constexpr (Dim == 2) {
+                    // 2D EdgeX: 0:[0,0], 1:[0,1]
                     edgeNDIndex[1] += edgeLocalIndex; // Bottom (0) or top (1) edge
                 } else if constexpr (Dim == 3) {
-                    edgeNDIndex[1] += (edgeLocalIndex >> 1) & 1;
-                    edgeNDIndex[2] += edgeLocalIndex & 1;
+                    // 3D EdgeX (counter-clockwise in YZ): 0:[0,0,0], 1:[0,1,0], 2:[0,1,1], 3:[0,0,1]
+                    constexpr size_t offsets[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+                    edgeNDIndex[1] += offsets[edgeLocalIndex][0];
+                    edgeNDIndex[2] += offsets[edgeLocalIndex][1];
                 }
             } else if constexpr (std::is_same_v<EdgeType, EdgeY<Dim>>) {
                 // Y-oriented edges
                 if constexpr (Dim == 2) {
+                    // 2D EdgeY: 0:[0,0], 1:[1,0]
                     edgeNDIndex[0] += edgeLocalIndex; // Left (0) or right (1) edge
                 } else if constexpr (Dim == 3) {
-                    edgeNDIndex[0] += (edgeLocalIndex >> 1) & 1;
-                    edgeNDIndex[2] += edgeLocalIndex & 1;
+                    // 3D EdgeY (counter-clockwise in XZ): 0:[0,0,0], 1:[1,0,0], 2:[1,0,1], 3:[0,0,1]
+                    constexpr size_t offsets[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+                    edgeNDIndex[0] += offsets[edgeLocalIndex][0];
+                    edgeNDIndex[2] += offsets[edgeLocalIndex][1];
                 }
             } else if constexpr (std::is_same_v<EdgeType, EdgeZ<Dim>> && Dim == 3) {
-                // Z-oriented edges (3D only)
-                edgeNDIndex[0] += (edgeLocalIndex >> 1) & 1;
-                edgeNDIndex[1] += edgeLocalIndex & 1;
+                // 3D EdgeZ (counter-clockwise in XY): 0:[0,0,0], 1:[1,0,0], 2:[1,1,0], 3:[0,1,0]
+                constexpr size_t offsets[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+                edgeNDIndex[0] += offsets[edgeLocalIndex][0];
+                edgeNDIndex[1] += offsets[edgeLocalIndex][1];
             }
             
             return edgeNDIndex;
