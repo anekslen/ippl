@@ -38,15 +38,21 @@ install(FILES
     # LagrangeSpace.h
     # LagrangeSpace.hpp
 
-    # Degrees of Freedom
+    # Degrees of Freedom Container
     FEMContainer.h
     FEMContainer.hpp
 
-    # Entity
-    Entity.h
+    # Degrees of Freedom Handler
+    DOFHandler.h
+    DOFHandler.hpp
 
-    # Array type
+    # Entity and helper Structs
+    Entity.h
     DOFArray.h
+    FEMHelperStructs.h
+
+    # SpaceTraits
+    FiniteElementSpaceTraits.h
 
     DESTINATION include/FEM
 )

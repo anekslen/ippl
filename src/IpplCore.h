@@ -51,6 +51,7 @@
 #include "FEM/Quadrature/MidpointQuadrature.h"
 
 // // FEM Spaces
+#include "FEM/LagrangeSpaceFEMContainer.h"
 #include "FEM/LagrangeSpace.h"
 
 #endif

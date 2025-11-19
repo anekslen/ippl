@@ -19,6 +19,14 @@
 
 namespace ippl {
 
+    // enum Type for different space types
+    enum SpaceType {
+        Lagrange,
+        RaviartThomas,
+        Nedelec
+    };
+
+
     constexpr unsigned calculateNumElementVertices(unsigned Dim) {
         return 1 << Dim;  // 2^Dim
     }
@@ -176,18 +184,6 @@ namespace ippl {
          * @return size_t - unsigned integer number of global degrees of freedom
          */
         KOKKOS_FUNCTION virtual size_t numGlobalDOFs() const = 0;
-
-        /**
-         * @brief Get the elements local DOF from the element index and global DOF
-         * index
-         *
-         * @param elementIndex size_t - The index of the element
-         * @param globalDOFIndex size_t - The global DOF index
-         *
-         * @return size_t - The local DOF index
-         */
-        KOKKOS_FUNCTION virtual size_t getLocalDOFIndex(const size_t& elementIndex,
-                                         const size_t& globalDOFIndex) const = 0;
 
         /**
          * @brief Get the global DOF index from the element index and local DOF
