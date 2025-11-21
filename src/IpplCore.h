@@ -41,6 +41,9 @@
 // // FEM Container
 #include "FEM/FEMContainer.h"
 
+// // DOF Handler
+#include "FEM/DOFHandler.h"
+
 // // FEM Elements
 #include "FEM/Elements/EdgeElement.h"
 #include "FEM/Elements/HexahedralElement.h"
@@ -51,6 +54,6 @@
 #include "FEM/Quadrature/MidpointQuadrature.h"
 
 // // FEM Spaces
-#include "FEM/LagrangeSpace.h"
+#include "FEM/LagrangeSpaceFEMContainer.h"
 
 #endif
