@@ -128,12 +128,12 @@ namespace ippl {
                 DPhiInvT, absDetDPhi);
 
             // get BC type of our RHS
-            BConds<FieldRHS, Dim>& bcField = (this->rhs_mp)->getFieldBC();
-            FieldBC bcType = bcField[0]->getBCType();
+            std::array<FieldBC, 2*Dim> bcTypes = (this->rhs_mp)->getFieldBC();
+            FieldBC bcType = bcTypes[0];
 
-            const auto algoOperator = [poissonEquationEval, &bcField, this](rhs_type field) -> lhs_type {
+            const auto algoOperator = [poissonEquationEval, &bcTypes, this](rhs_type field) -> lhs_type {
                 // set appropriate BCs for the field as the info gets lost in the CG iteration
-                field.setFieldBC(bcField);
+                field.setFieldBC(bcTypes);
 
                 field.fillHalo();
 
@@ -161,9 +161,11 @@ namespace ippl {
             IpplTimings::stopTimer(pcgTimer);
 
             int output = this->params_m.template get<int>("output_type");
+            /*
             if (output & Base::GRAD) {
                 *(this->grad_mp) = -grad(*(this->lhs_mp));
             }
+            */
 
             IpplTimings::stopTimer(solve);
         }
